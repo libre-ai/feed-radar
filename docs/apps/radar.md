@@ -60,7 +60,7 @@ All personal API routes require opaque browser session and tenant. Internal work
 
 ## Runtime boundaries
 
-Bun owns scheduling, HTTP orchestration, persistence and UI. Hostile parsing and deterministic rule evaluation are Rust candidates: pure feed parser/rule evaluator exposed through WIT/WASM or isolated worker HTTP only after budget tests. Rust receives bytes plus explicit limits and emits canonical JSON; it receives no DB credential.
+Bun owns scheduling, HTTP orchestration, persistence and UI. Rust owns hostile feed parsing and deterministic rule evaluation behind the accepted WIT/WASM boundary; budget tests are mandatory before integration. Rust receives bytes plus explicit limits and emits canonical JSON; it receives no DB credential.
 
 ## Accessibility and degraded mode
 
