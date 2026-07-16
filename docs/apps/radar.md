@@ -114,7 +114,7 @@ no raw-body logs and cross-tenant refusal.
 4. tenant data/API/UI — Experiences ;
 5. replay, RLS, SSRF and failure qualification — Infrastructure and Release.
 
-Network and parser packages can proceed in parallel against fixtures; persistence starts from the accepted event and ADR-0002 retention rules.
+Network quarantine may proceed against fixtures, but parser implementation waits for the independent Architecture and Security agent verdicts. Persistence starts from the accepted event and ADR-0002 retention rules.
 
 ## Release and rollback
 
