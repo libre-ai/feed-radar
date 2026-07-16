@@ -78,7 +78,10 @@ Bun owns scheduling, HTTP orchestration, decompression, persistence, authorizati
 candidate WIT/WASM boundary reserves hostile feed parsing and deterministic rule evaluation for a
 future specialized Rust engine; this contract step implements no engine. The pure component receives
 bytes, authorized source ID, final base URL and explicit limits; it emits canonical JSON, imports no
-capability and receives no tenant value, credential, source fetcher or database handle.
+capability and receives no tenant value, credential, source fetcher or database handle. Browser
+command schemas omit server-owned tenant, identity, revision, status and time fields; Bun derives them
+from the authenticated session and authoritative state. Public refusals use closed codes and the static
+content-free message `Request refused`.
 
 ## Accessibility and degraded mode
 
@@ -95,13 +98,15 @@ Decision explanations are textual and do not rely on color. Keyboard users can a
 - Radar API v2 — `contracts/openapi/radar.v2.yaml` ;
 - hostile parser/rules v2 — `contracts/wit/radar-engine-v2/world.wit` and its normative `PROFILE.md` ;
 - portable hostile/golden corpus —
-  `contracts/fixtures/radar-engine-v2/golden-vectors.v1.json`.
+  `contracts/fixtures/radar-engine-v2/golden-vectors.v1.json` and
+  `contracts/fixtures/radar-engine-v2/security-vectors.v1.json`.
 
 ## Evidence
 
-Unit tests cover canonical URL, idempotency, deduplication and explanations. Contract vectors cover
-all accepted media/dialects and every closed parser/evaluator refusal, including DTD/entity XML,
-HTML, encoded/compressed bytes, duplicate JSON keys, deep unknown fields and pre-dedup item limits.
+Unit tests cover canonical URL, idempotency, deduplication and explanations. The candidate contract
+harness covers 43 parse cases, 16 evaluation cases and 18 generated exact/over boundaries, including
+all accepted media/dialects, every closed refusal, DTD/entity/reference XML, HTML, BOM/invalid UTF-8,
+duplicate JSON keys, deep unknown fields, UTC rollover, pre-dedup item limits and refusal precedence.
 Integration tests use local DNS/HTTP fixtures and PostgreSQL RLS. E2E covers
 subscribe/decision/replay/export/delete. Security gates prove SSRF denial, bounded resources,
 no raw-body logs and cross-tenant refusal.
