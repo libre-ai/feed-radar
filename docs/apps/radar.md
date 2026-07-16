@@ -41,14 +41,28 @@ Fetch jobs are leased and idempotent by tenant/source/scheduled-window. Decision
 | `radar.url_scheme_forbidden` | source is not approved HTTP(S) |
 | `radar.destination_forbidden` | DNS/IP resolves to loopback, private, link-local or metadata range |
 | `radar.redirect_forbidden` | redirect exceeds bound or changes to forbidden destination |
-| `radar.body_too_large` | compressed/decompressed body exceeds contract |
-| `radar.media_type_unsupported` | payload is not an approved feed type |
-| `radar.parse_budget_exceeded` | CPU/time/memory/node limit exceeded |
-| `radar.rule_invalid` | unknown operator, unbounded expression or missing explanation label |
+| `radar.invalid_limits` | parser input/output byte, item or depth limits are outside v2 ranges |
+| `radar.invalid_source` | source ID or final base URL is invalid/non-canonical |
+| `radar.body_too_large` | decompressed input exceeds the explicit contract bound |
+| `radar.output_too_large` | complete canonical output exceeds the explicit contract bound |
+| `radar.media_type_unsupported` | media type or media parameter is not approved |
+| `radar.encoding_unsupported` | bytes are not an accepted uncompressed UTF-8 document |
+| `radar.feed_malformed` | selected feed syntax is malformed or has duplicate JSON keys |
+| `radar.feed_kind_unsupported` | root/version does not match RSS 2.0, Atom 1.0 or JSON Feed 1/1.1 |
+| `radar.xml_dtd_forbidden` | XML contains a DTD/entity declaration |
+| `radar.xml_entity_forbidden` | XML references a non-predefined named entity |
+| `radar.max_depth_exceeded` | complete source tree exceeds the declared depth |
+| `radar.max_items_exceeded` | source candidates exceed the declared count before deduplication |
+| `radar.json_invalid` | rule-evaluation JSON is malformed, invalid UTF-8 or has duplicate keys |
+| `radar.json_not_canonical` | rule-evaluation input is not exact RFC 8785 JSON |
+| `radar.item_invalid` | canonical item does not satisfy its strict schema |
+| `radar.rule_invalid` | rule set violates schema or deterministic semantic invariants |
 | `radar.tenant_mismatch` | source/rule/item belongs to another tenant |
 | `radar.revision_stale` | subscription/rule mutation uses stale revision |
 
-A rejected fetch records bounded metadata and rule ID, never the full hostile body.
+The v2 WIT refusal is a closed enum; the host performs the exact `x-y` → `radar.x_y` mapping. A
+rejected fetch records bounded metadata only, never hostile body bytes, excerpts, parser diagnostics
+or tenant data in its error.
 
 ## Data
 
@@ -60,7 +74,11 @@ All personal API routes require opaque browser session and tenant. Internal work
 
 ## Runtime boundaries
 
-Bun owns scheduling, HTTP orchestration, persistence and UI. Rust owns hostile feed parsing and deterministic rule evaluation behind the accepted WIT/WASM boundary; budget tests are mandatory before integration. Rust receives bytes plus explicit limits and emits canonical JSON; it receives no DB credential.
+Bun owns scheduling, HTTP orchestration, decompression, persistence, authorization and UI. The
+candidate WIT/WASM boundary reserves hostile feed parsing and deterministic rule evaluation for a
+future specialized Rust engine; this contract step implements no engine. The pure component receives
+bytes, authorized source ID, final base URL and explicit limits; it emits canonical JSON, imports no
+capability and receives no tenant value, credential, source fetcher or database handle.
 
 ## Accessibility and degraded mode
 
@@ -69,14 +87,24 @@ Decision explanations are textual and do not rely on color. Keyboard users can a
 ## Contracts
 
 - Feed Fetch Request/Result v1 — `contracts/schemas/feed-fetch.v1.schema.json` ;
-- Rule Set v1 — `contracts/schemas/curation-rule-set.v1.schema.json` ;
-- Curated Item Export v1 — `contracts/schemas/curated-item-export.v1.schema.json` ;
-- Radar API — `contracts/openapi/radar.v1.yaml` ;
-- hostile parser/rules — `contracts/wit/radar-engine-v1/world.wit`.
+- Rule Set v2 — `contracts/schemas/curation-rule-set.v2.schema.json` ;
+- Normalized Item/Feed v1 — `contracts/schemas/radar-normalized-item.v1.schema.json` and
+  `contracts/schemas/radar-normalized-feed.v1.schema.json` ;
+- Rule Evaluation v1 — `contracts/schemas/radar-rule-evaluation.v1.schema.json` ;
+- Curated Item Export v2 — `contracts/schemas/curated-item-export.v2.schema.json` ;
+- Radar API v2 — `contracts/openapi/radar.v2.yaml` ;
+- hostile parser/rules v2 — `contracts/wit/radar-engine-v2/world.wit` and its normative `PROFILE.md` ;
+- portable hostile/golden corpus —
+  `contracts/fixtures/radar-engine-v2/golden-vectors.v1.json`.
 
 ## Evidence
 
-Unit tests cover canonical URL, idempotency, deduplication and explanations. Contract tests use malicious XML/HTML, compression bombs, redirect chains and unknown fields. Integration tests use local DNS/HTTP fixtures and PostgreSQL RLS. E2E covers subscribe/decision/replay/export/delete. Security gates prove SSRF denial, bounded resources, no raw-body logs and cross-tenant refusal.
+Unit tests cover canonical URL, idempotency, deduplication and explanations. Contract vectors cover
+all accepted media/dialects and every closed parser/evaluator refusal, including DTD/entity XML,
+HTML, encoded/compressed bytes, duplicate JSON keys, deep unknown fields and pre-dedup item limits.
+Integration tests use local DNS/HTTP fixtures and PostgreSQL RLS. E2E covers
+subscribe/decision/replay/export/delete. Security gates prove SSRF denial, bounded resources,
+no raw-body logs and cross-tenant refusal.
 
 ## Work packages
 
