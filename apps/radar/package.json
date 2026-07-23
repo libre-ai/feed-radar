@@ -11,5 +11,8 @@
     "check:bun": "bun ../../tools/quality/check-bun-minimum.ts",
     "pretest": "bun run check:bun",
     "test": "bun test"
+  },
+  "dependencies": {
+    "@libre-ai/policy-core-ref": "workspace:*"
   }
 }
