@@ -20,7 +20,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 authors = ["Constantin Jais"]
-repository = "https://github.com/feedmind/feedmind"
+repository = "https://github.com/libre-ai/feed-radar"
 
 [workspace.dependencies]
 # Async runtime

@@ -1,69 +1,62 @@
-# rumble-feed-mind — consignes agents
+# AGENTS.md
 
-## Identité
+Canonical agent-context surface for this repository. `CLAUDE.md` is a minimal adapter that imports this file.
 
-`rumble-feed-mind` est un moteur personnel de veille souveraine, Rust-first, multi-plateforme. Il ingère des flux, normalise les articles, applique des règles explicables, prépare des décisions de lecture et distribue l'expérience sur CLI/API/web/desktop/mobile.
+## Purpose
 
-## Doctrine
+Radar is explainable feed selection and portable curation: subscribe to RSS, Atom and JSON Feed sources, apply visible deterministic rules to decide which items to keep, inspect rule-by-rule why each decision was made, and export a curated set with provenance. Feeds stay untrusted until the user decides they matter; selection is never an opaque ranking.
 
-- **Rust-first product stack + Portal** : domaine, règles, sync, contrats IA et adapters doivent tendre vers Rust ; les surfaces durables consomment Portal pour tokens, accessibilité, i18n UI et shells web/natifs.
-- **Surfaces historiques** : le legacy Next.js et le spike Leptos ont été retirés du workspace ; leur historique et `docs/spikes/leptos-web-shell.md` restent des références de migration, pas des cibles long terme.
-- **Adapters minces** : `api`, `worker`, `cli`, UI et shells de distribution ne portent pas la logique métier durable.
-- **Explicabilité obligatoire** : une règle ou décision de tri doit produire une raison et, si possible, une evidence.
-- **Event-minded** : préférer des événements métier rejouables (`FeedFetched`, `ArticleDiscovered`, `RuleEvaluated`) aux mutations opaques.
-- **Souveraineté** : self-hostable, PostgreSQL/Redis, SQLite local si offline, Clever Cloud comme cible EU, pas de dépendance obligatoire à un hyperscaler US.
-- **BYOK** : clés IA utilisateur chiffrées, jamais loggées, jamais commitées.
-- **Preuve > promesse** : chaque incrément de refonte doit laisser une commande de vérification reproductible.
+## Scope / Non-scope
 
-## Architecture cible
+- **Reserved home.** This repository is the public reserved home of Radar. The product is being rebuilt in the canonical base repository [`libre-ai/libre-ai`](https://github.com/libre-ai/libre-ai) (multi-repo topology, [ADR-0008](https://github.com/libre-ai/libre-ai/blob/main/docs/adr/0008-multi-repo-target-topology-and-brand.md)); it reopens as the real product repository when the owner activates it (wave 4).
+- The legacy implementation carried here is **frozen for reference**: the Rust workspace (`crates/{crypto,domain,ingest,opml,rules,sync,storage,core,api,worker,cli}` and `surfaces/ui`), the PostgreSQL migrations and their security manifest, the Playwright e2e suite, and the `examples/` corpus.
+- **Non-scope: new product development in this repository until activation.** Work on the parser, rule engine, contracts and product host happens in the base repository.
+- `rumble-feed-mind` and the `feedmind-*` crate names are a retired brand and historical package identifiers. They survive in `Cargo.toml`, crate names and script names because renaming frozen code buys nothing — they are not the product name.
 
-```text
-crates/
-  domain/   types purs et invariants transverses
-  ingest/   fetch, parse, normalize, dedup
-  rules/    règles, scoring, decisions, evidence
-  ai/       traits providers, BYOK contracts, prompts
-  sync/     event log, snapshots, import/export
-  storage/  ports de persistance + impls
-  api/      adapter HTTP Axum
-  worker/   adapter jobs Redis/scheduler/fetch/evaluation
-  cli/      diagnostics, import/export, opérations locales
-surfaces/  # cibles, non encore matérialisées dans le workspace
-  ui/       Dioxus multi-target après stabilisation des contrats Portal
-  distro/   web/native à évaluer sur preuve produit et décision dédiée
-  legacy/   Next.js et Leptos archivés dans Git/docs, pas de cible active
-```
+## Engineering doctrine (frozen for reference)
 
-## Quality gates locaux
+These rules governed the implementation carried here. They are recorded because they explain why the code has the shape it has — not as instructions to build against today.
 
-À exécuter avant tout commit de refonte Rust :
+- **Rust-first product stack** — domain, rules, sync and adapters are Rust; durable surfaces consume the design system for tokens, accessibility and UI i18n.
+- **Thin adapters** — `api`, `worker`, `cli` and UI shells carry no durable business logic.
+- **Explainability is mandatory** — a rule or sorting decision must produce a reason and, where possible, an evidence trail.
+- **Event-minded** — prefer replayable business events (`FeedFetched`, `ArticleDiscovered`, `RuleEvaluated`) to opaque mutations.
+- **Sovereignty** — self-hostable, PostgreSQL/Redis, local SQLite when offline, EU hosting target, no mandatory dependency on a US hyperscaler.
+- **BYOK** — user AI keys are encrypted, never logged, never committed.
+- **Evidence over promise** — every increment leaves a reproducible verification command.
+- **Retired surfaces** — the legacy Next.js app and the Leptos spike were removed from the workspace; `docs/spikes/leptos-web-shell.md` keeps the evaluation as a migration reference, not a target.
 
-```bash
-cargo fmt --all --check
-cargo check
-cargo test --workspace
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-agentic-harness goals report --config goals.toml
-```
+## Commands
 
-Le gate historique `cd apps/web && npm run lint` n'est plus actif depuis le retrait du legacy Next.js.
+Verified against `Cargo.toml`, `e2e/package.json`, `deny.toml` and `scripts/`. No CI workflow in this repository runs them — see **CI gates**.
 
-## Règles de modification
+- Rust workspace: `cargo test --workspace` (twelve members: `crates/crypto`, `crates/domain`, `crates/ingest`, `crates/opml`, `crates/rules`, `crates/sync`, `crates/storage`, `crates/core`, `crates/api`, `crates/worker`, `crates/cli`, `surfaces/ui`).
+- Format and check: `cargo fmt --all --check`, `cargo check`.
+- Lint: `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
+- Dependency policy: `cargo deny check` (`deny.toml`).
+- e2e (from `e2e/`): `npm run test` (Playwright).
+- Scripts in `scripts/`: `build-feedmind-app.sh`, `verify-feedmind-app.sh`, `generate-live-radar-proof.sh`, `verify-design-system.py`, and the PostgreSQL role fixtures under `scripts/postgres/`.
 
-- Lire les fichiers concernés avant édition.
-- Préférer les petits changements réversibles.
-- Ne pas introduire de `unwrap()` hors tests sans justification.
-- Ne pas masquer une erreur par un `allow` global sans ADR ou commentaire local.
-- Garder `Cargo.lock` versionné pour la reproductibilité des applications.
-- Documenter toute décision structurante dans `docs/adr/`.
-- Toute nouvelle dépendance majeure doit être justifiée par licence, souveraineté, maintenance et alternative rejetée.
+## CI gates
 
-## Priorité de refonte
+The legacy product CI (Rust, security, contracts, release) was retired from this reserved shell. Two workflows remain and run on every pull request:
 
-1. Extraire `crates/domain` sans changement fonctionnel.
-2. Faire consommer `domain` par le core existant.
-3. Extraire `ingest` et `rules` avec tests de non-régression.
-4. Modéliser `Decision`, `Evidence`, `Action` et les événements métier.
-5. Faire de la CLI le premier client complet du core.
-6. Prouver un premier parcours produit **Dioxus** vérifiable (ADR 0002 / ecosystem ADR 0032) seulement après stabilisation des contrats UI Portal ; le spike Leptos `apps/web-rs` a été retiré (évaluation conservée dans `docs/spikes/leptos-web-shell.md`).
-7. N'évaluer la distribution web/native/desktop/mobile qu'après cette preuve, avec une décision dédiée ; Tauri n'est pas un sous-jalon actif.
+- `Context hygiene` (`.github/workflows/context-hygiene.yml`) — blocks private identifiers and machine-local paths from entering the public tree.
+- `db-inspection` (`.github/workflows/db-inspection.yml`) — fail-closed inspection of `migrations/` against `db-security-manifest.json`.
+
+## Links
+
+- [README](README.md) · [Français](README.fr.md)
+- [docs/adr/](docs/adr/) — seven accepted ADRs, including `0002-rust-first-product-stack`, `0004-auth-boundary-jwt-session-biscuit-delegation`, `0006-tenant-context-and-row-level-security` and `0007-bounded-public-feed-sync`
+- [docs/product-readiness.md](docs/product-readiness.md) — readiness cockpit for the frozen implementation
+- [ROADMAP.md](ROADMAP.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
+
+## Modification rules
+
+- Read the relevant files before editing.
+- Prefer small, reversible changes.
+- Never introduce `unwrap()` outside tests without justification.
+- Never silence an error with a global `allow` without an ADR or a local comment.
+- Keep `Cargo.lock` versioned for reproducibility.
+- Record any structural decision in `docs/adr/`.
+- Never add a major dependency without a licence, sovereignty, maintenance and rejected-alternatives justification.
