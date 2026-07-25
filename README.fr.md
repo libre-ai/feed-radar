@@ -71,4 +71,10 @@ Pour suivre l'avancement ou contribuer, ouvrez issues et pull requests dans [`li
 
 ## Licence
 
-EUPL-1.2.
+Multi-licence, déclarée par chemin avec [REUSE](https://reuse.software/) dans [`REUSE.toml`](REUSE.toml) :
+
+- `EUPL-1.2` — l'espace de travail Rust applicatif, la surface UI, les migrations PostgreSQL, le manifeste de sécurité de base de données, les scripts, la suite end-to-end et les workflows sous `.github/` ;
+- `Apache-2.0` — les schémas d'interopérabilité sous [`schemas/`](schemas) et le corpus d'exemples sous [`examples/`](examples) ;
+- `CC-BY-4.0` — la documentation éditoriale et les registres de projet.
+
+[`LICENSE`](LICENSE) en est le résumé lisible ; la politique canonique — portée, précédence, concessions historiques, données et contributions — est la [politique de licences de l'organisation](https://github.com/libre-ai/libre-ai/blob/main/LICENSING.md). Les révisions publiées antérieurement sous MIT restent disponibles sous ces termes ; aucune concession de licence antérieure n'est retirée.

@@ -1,7 +1,7 @@
 {
   "name": "feed-radar-product-proof",
   "private": true,
-  "license": "MIT",
+  "license": "EUPL-1.2",
   "scripts": {
     "test": "playwright test"
   },

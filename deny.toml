@@ -29,6 +29,25 @@ allow = [
   "BSL-1.0",
   "CDLA-Permissive-2.0",
 ]
+# The `allow` list above is the INBOUND policy for third-party dependencies and
+# is unchanged. The first-party workspace crates are OUTBOUND `EUPL-1.2` (see
+# LICENSING at https://github.com/libre-ai/libre-ai/blob/main/LICENSING.md), so
+# they are named one by one here instead of widening the inbound allow-list:
+# a third-party EUPL dependency must still be reviewed explicitly.
+exceptions = [
+  { allow = ["EUPL-1.2"], crate = "feedmind-api" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-app" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-cli" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-core" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-crypto" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-domain" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-ingest" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-opml" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-rules" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-storage" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-sync" },
+  { allow = ["EUPL-1.2"], crate = "feedmind-worker" },
+]
 
 [[licenses.clarify]]
 name = "ring"
