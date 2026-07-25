@@ -6,8 +6,9 @@ The licence for each file is declared through SPDX metadata and REUSE.toml:
   migrations, the database security manifest, the scripts, the end-to-end suite,
   the agent-context configuration and the workflows under `.github/` —
   first-party software and runtime policy by default;
-- Apache-2.0: the interoperability schemas under `schemas/` and the sample
-  corpus under `examples/`;
+- Apache-2.0: the interoperability schemas under `schemas/`, the sample corpus
+  under `examples/`, and the generated design-system assets under
+  `surfaces/ui/assets/libre-ia/` — client-facing design output;
 - CC-BY-4.0: editorial documentation and first-party project records.
 
 Full licence texts are stored in LICENSES/.

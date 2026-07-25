@@ -64,10 +64,21 @@ SPDX-License-Identifier = "EUPL-1.2"
 # revision and per-file digests) is recorded in `provenance.json` and
 # `design-system.lock.json`. No third-party font binary is tracked in this
 # repository: the CSS only names font families, and the upstream font files
-# listed in the provenance statement are absent from the tree. This block
-# restates the surrounding first-party licence to keep that provenance explicit.
+# listed in the provenance statement are absent from the tree.
+#
+# These assets are the "client-facing design/web packages and application
+# templates" line of the canonical policy, so they carry the permissive grant
+# rather than the reciprocal default that surrounds them. The same emission is
+# redistributed by sibling repositories of the organisation, where it is already
+# published under `Apache-2.0`: `tokens.css`, `themes.css`, `components.css` and
+# `contrast-report.json` are byte-identical across those copies. Declaring them
+# reciprocal here would not produce reciprocity — a recipient simply takes the
+# permissive copy — it would only misstate the grant offered on these bytes.
+# The build metadata (`manifest.json`, `provenance.json`,
+# `design-system.lock.json`) is annotated with the artefacts it describes, so
+# the whole emitted bundle carries one licence.
 [[annotations]]
 path = ["surfaces/ui/assets/libre-ia/**"]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 Libre AI contributors"
-SPDX-License-Identifier = "EUPL-1.2"
+SPDX-License-Identifier = "Apache-2.0"
