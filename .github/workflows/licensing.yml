@@ -1,0 +1,27 @@
+name: Licensing
+
+# Verifies that every tracked file carries an unambiguous copyright and licence
+# declaration. The per-path mapping lives in REUSE.toml; the canonical policy
+# it implements is https://github.com/libre-ai/libre-ai/blob/main/LICENSING.md.
+# The REUSE toolchain is provisioned with uv, which also supplies the Python
+# interpreter: no pip install, no virtualenv.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      - name: Verify REUSE compliance (fail closed)
+        run: uvx --from 'reuse[charset-normalizer]==6.2.0' reuse lint

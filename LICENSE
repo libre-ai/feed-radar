@@ -1,21 +1,20 @@
-MIT License
+Radar is a multi-licence repository of the Libre AI project.
 
-Copyright (c) 2026 Constantin Jais
+The licence for each file is declared through SPDX metadata and REUSE.toml:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+- EUPL-1.2: the Rust application workspace, the UI surface, the PostgreSQL
+  migrations, the database security manifest, the scripts, the end-to-end suite,
+  the agent-context configuration and the workflows under `.github/` —
+  first-party software and runtime policy by default;
+- Apache-2.0: the interoperability schemas under `schemas/` and the sample
+  corpus under `examples/`;
+- CC-BY-4.0: editorial documentation and first-party project records.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Full licence texts are stored in LICENSES/.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The organization-wide licensing policy — scope, precedence, historical grants,
+data and contribution rules — is the canonical one and is not restated here:
+https://github.com/libre-ai/libre-ai/blob/main/LICENSING.md
+
+Historical revisions previously published under MIT remain available under
+those terms. No previous licence grant is withdrawn.

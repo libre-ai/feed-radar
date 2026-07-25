@@ -71,4 +71,10 @@ To follow progress or contribute, open issues and pull requests in [`libre-ai/li
 
 ## License
 
-EUPL-1.2.
+Multi-licence, declared per path with [REUSE](https://reuse.software/) in [`REUSE.toml`](REUSE.toml):
+
+- `EUPL-1.2` — the Rust application workspace, the UI surface, the PostgreSQL migrations, the database security manifest, the scripts, the end-to-end suite and the workflows under `.github/`;
+- `Apache-2.0` — the interoperability schemas under [`schemas/`](schemas) and the sample corpus under [`examples/`](examples);
+- `CC-BY-4.0` — editorial documentation and first-party project records.
+
+[`LICENSE`](LICENSE) is the human-readable summary; the canonical policy — scope, precedence, historical grants, data and contribution rules — is the [organization licensing policy](https://github.com/libre-ai/libre-ai/blob/main/LICENSING.md). Revisions previously published under MIT remain available under those terms; no previous licence grant is withdrawn.
