@@ -6,10 +6,17 @@ version = 2
 yanked = "warn"
 ignore = [
   # Temporary waivers accepted in docs/adr/0005-dependency-advisory-waivers.md.
-  # Expire on 2026-09-30 or earlier if dependencies are replaced/isolated.
-  # Remaining advisories are linked to a removal plan (I4/I6).
-  "RUSTSEC-2026-0174", # http-types via optional async-stripe feature → isolated from default/core builds; replace/remove adapter before waiver expiry
-  "RUSTSEC-2024-0384", # instant via optional async-stripe feature → isolated from default/core builds; replace/remove adapter before waiver expiry
+  # Both are inert under the default feature set — `cargo deny check` reports
+  # them as `advisory-not-detected` — and both are load-bearing under
+  # `cargo deny --all-features check advisories`, which fails on exactly these
+  # two ids when the list is emptied. They are kept for that invocation rather
+  # than deleted on the strength of the default-feature run.
+  #
+  # The per-entry `expires=` and `ref=` below are mandatory and enforced by
+  # `scripts/advisory-waiver-gate.sh`; the dates must match `.cargo/audit.toml`
+  # for the same id, which the same gate checks.
+  "RUSTSEC-2026-0174", # http-types via the optional async-stripe feature, isolated from default/core builds; replace or remove the adapter before expiry (I4); expires=2026-09-30; ref=docs/adr/0005-dependency-advisory-waivers.md
+  "RUSTSEC-2024-0384", # instant via the optional async-stripe feature, isolated from default/core builds; replace or remove the adapter before expiry (I4); expires=2026-09-30; ref=docs/adr/0005-dependency-advisory-waivers.md
 ]
 
 [licenses]
