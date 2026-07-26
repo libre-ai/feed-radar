@@ -383,10 +383,10 @@ mod tests {
     }
 
     /// The verification side pins `HS256`, and `jsonwebtoken` checks the header
-    /// algorithm against that list before it constructs a verifier. A token
-    /// announcing `RS256` is therefore refused without any RSA code running —
-    /// which is what keeps the `rsa` backend of the `rust_crypto` provider off
-    /// every reachable path here (see `docs/adr/0005`).
+    /// algorithm against that list before it constructs a verifier, so a token
+    /// announcing another algorithm is refused without reaching a signature
+    /// implementation at all. This pins the `alg` confusion boundary: it must
+    /// keep holding whichever crypto provider the workspace carries.
     #[test]
     fn token_announcing_another_algorithm_is_refused() {
         let (token, _) = generate_jwt(&probe_user(), TEST_SECRET, 3600).expect("mint");

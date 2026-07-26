@@ -77,9 +77,11 @@ fi
 
 if [ "$has_rust_crypto" -eq 1 ]; then
   echo "   provider: rust_crypto (RustCrypto backend)"
-  echo "   note: pulls 'rsa', waived as unreachable in docs/adr/0005"
+  echo "   note: this is NOT the backend retained in docs/adr/0005. It pulls"
+  echo "         'rsa' and with it RUSTSEC-2023-0071, which has no upstream fix,"
+  echo "         so it needs a deny.toml waiver that 'aws_lc_rs' does not."
 else
-  echo "   provider: aws_lc_rs (aws-lc-rs backend)"
+  echo "   provider: aws_lc_rs (aws-lc-rs backend, already built for rustls)"
 fi
 
 echo

@@ -10,7 +10,6 @@ ignore = [
   # Remaining advisories are linked to a removal plan (I4/I6).
   "RUSTSEC-2026-0174", # http-types via optional async-stripe feature → isolated from default/core builds; replace/remove adapter before waiver expiry
   "RUSTSEC-2024-0384", # instant via optional async-stripe feature → isolated from default/core builds; replace/remove adapter before waiver expiry
-  "RUSTSEC-2023-0071", # rsa (Marvin) via jsonwebtoken `rust_crypto` provider → linked but unreachable: tokens are HS256 only and `decode` refuses a foreign `alg` before building a verifier; no RSA key material exists here. No upstream patch. Reviewed 2026-09-30 — see docs/adr/0005
 ]
 
 [licenses]
