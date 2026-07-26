@@ -56,7 +56,10 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-log="$(mktemp -t workspace-test-gate)"
+# An explicit template rather than `mktemp -t NAME`: BSD/macOS appends its own
+# suffix to a `-t` prefix, GNU refuses the same argument outright with "too few
+# X's in template". A full path carrying the X's is accepted by both.
+log="$(mktemp "${TMPDIR:-/tmp}/workspace-test-gate.XXXXXX")"
 trap 'rm -f "$log"' EXIT
 
 echo "== Workspace test suite =="
@@ -83,7 +86,11 @@ passed="$(awk '/^test result:/ { total += $4 } END { print total + 0 }' "$log")"
 failed="$(awk '/^test result:/ { total += $6 } END { print total + 0 }' "$log")"
 ignored="$(awk '/^test result:/ { total += $8 } END { print total + 0 }' "$log")"
 binaries="$(grep -c '^test result:' "$log" || true)"
-skipped_db="$(grep -c 'skipping .*FEED_RADAR_TEST_DATABASE_URL is not set' "$log" || true)"
+# Counted with `grep -o` and not `grep -c`: the harness runs tests in parallel
+# and `--nocapture` lets two writes land on one line ("... okskipping live
+# probe: ..."), so counting LINES silently undercounts the skips. Counting
+# occurrences is the point of the number.
+skipped_db="$(grep -o 'skipping [^:]*: FEED_RADAR_TEST_DATABASE_URL is not set' "$log" | wc -l | tr -d '[:space:]')"
 
 echo "   test binaries executed: ${binaries}"
 echo "   assertions passed:      ${passed}"
