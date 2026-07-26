@@ -74,7 +74,16 @@ argon2 = "0.5"
 password-hash = { version = "0.5", features = ["getrandom"] }
 
 # JWT
-jsonwebtoken = "10.3"
+# `jsonwebtoken` 10.x resolves no crypto backend on its own: `sign` and `verify`
+# both go through `CryptoProvider::get_default()`, which panics when neither the
+# `rust_crypto` nor the `aws_lc_rs` feature is enabled. The feature is declared
+# here, on the workspace dependency, so every member inherits a usable backend
+# rather than compiling cleanly and aborting on the first token.
+# `rust_crypto` is the owner's decision (docs/adr/0005). Exactly one provider may
+# be enabled: the crate matches on `all(feature = "rust_crypto", not(feature =
+# "aws_lc_rs"))`, so enabling both falls through to the same panic as enabling
+# neither.
+jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 
 # Encryption (for API keys)
 aes-gcm = "0.11"

@@ -74,13 +74,6 @@ stripe = { package = "async-stripe", version = "0.39", features = ["runtime-toki
 # Drives the assembled Router through a real request so that extractor-level
 # refusals (status, headers, body) are proven at the HTTP boundary, not below it.
 tower = { workspace = true }
-# Test-only crypto provider for `jsonwebtoken` 10.4, which resolves none from
-# the workspace feature set and panics on the first sign or verify. `aws-lc-rs`
-# is already compiled in this graph through `rustls`, so this adds no crate.
-# Scoped to dev-dependencies on purpose: under resolver "2" it does not reach
-# `cargo build`, so the production defect stays visible and its fix — which
-# provider the server should carry — stays the owner's decision.
-jsonwebtoken = { workspace = true, features = ["aws_lc_rs"] }
 
 [features]
 default = []

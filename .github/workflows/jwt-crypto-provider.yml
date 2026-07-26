@@ -1,0 +1,58 @@
+name: JWT crypto provider
+
+# Proves that the authentication boundary can actually sign and verify a token.
+#
+# `jsonwebtoken` 10.x selects its crypto backend from crate features and panics
+# at the first sign or verify when the feature set names no backend, or names
+# both. Nothing catches that at compile time: `cargo check`, `cargo clippy` and
+# `cargo build` are all green on a binary that aborts on its first login. The
+# repository shipped in exactly that state, and a first attempt to fix it placed
+# the provider under `[dev-dependencies]`, where resolver "2" keeps it out of
+# `cargo build` — green tests, broken server.
+#
+# Two steps, deliberately in this order:
+#
+#   1. A graph check that the provider reaches the PRODUCTION build. It reads
+#      `cargo tree --edges normal` and never compiles, so it is fast and it is
+#      the step that a dev-only provider cannot satisfy.
+#   2. The round-trip test, which signs a token with the production minting
+#      function and verifies it with the production verification function. This
+#      is the step that proves the chosen provider actually works rather than
+#      merely being present.
+#
+# NOTE FOR THE REPOSITORY OWNER: this job is NOT enforcing until its name,
+# "JWT signs and verifies", is added to the branch-protection required checks.
+# Until then it reports without blocking.
+#
+# Unlike the other workflows kept in this reserved shell, this one compiles a
+# crate. That is the point: the defect it guards is invisible to every check
+# that stops at manifests.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jwt-crypto-provider:
+    name: JWT signs and verifies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # `jsonwebtoken` 10.4 declares rust-version 1.88, above what the runner
+      # image may carry. Pin to current stable explicitly rather than inherit.
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          cargo --version
+
+      - name: Provider reaches the production build (fail closed)
+        run: scripts/jwt-crypto-provider-gate.sh
+
+      - name: Sign and verify a real session token (fail closed)
+        run: cargo test -p feedmind-api --bin feedmind-api routes::auth::
