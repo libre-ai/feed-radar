@@ -1,0 +1,54 @@
+name: Workspace tests
+
+# Runs the whole Rust test suite on every pull request.
+#
+# Before this workflow, the only `cargo test` in CI lived in
+# `jwt-crypto-provider.yml`, filtered to `routes::auth::tests`. That job proves
+# the auth boundary can sign and verify a token and is deliberately narrow; the
+# remaining 102 assertions across the eleven workspace members ran in no check
+# at all. A member could stop compiling, or start failing, and every required
+# check would stay green.
+#
+# This is a SEPARATE workflow rather than an extra step in an existing job, for
+# the same reason `JWT signs and verifies` is separate: a check must be named
+# for what it actually covers. `No unreachable workspace code` is a seconds-long
+# manifest gate that never compiles, and folding a multi-minute full-workspace
+# build into it would make a check named for dead code fail because a test
+# regressed. The name below is the protected check identifier — renaming it
+# silently drops the branch-protection requirement.
+#
+# NOTE FOR THE REPOSITORY OWNER: this job is NOT enforcing until its name,
+# "Workspace tests pass", is added to the branch-protection required checks.
+#
+# What this job does NOT cover: the tests that need a live PostgreSQL return
+# early when `FEED_RADAR_TEST_DATABASE_URL` is unset, and this job does not
+# provision one. That is a deliberate choice, argued in the header of
+# `scripts/workspace-test-gate.sh`, and the gate prints how many tests it
+# skipped so the green mark never implies coverage it does not have.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workspace-tests:
+    name: Workspace tests pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # `jsonwebtoken` 10.4 declares rust-version 1.88, above what the runner
+      # image may carry. Pin to current stable explicitly rather than inherit.
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          cargo --version
+
+      - name: Run the workspace test suite (fail closed)
+        run: scripts/workspace-test-gate.sh
