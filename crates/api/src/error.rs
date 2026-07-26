@@ -96,16 +96,28 @@ impl IntoResponse for ApiError {
             tracing::error!(error = %self, "Internal server error");
         }
 
-        let body = ErrorResponse {
-            error: ErrorBody {
-                code: code.to_string(),
-                message,
-                details: None,
-            },
-        };
-
-        (status, Json(body)).into_response()
+        error_envelope(status, code, message)
     }
+}
+
+/// Render one failure in the documented error envelope.
+///
+/// Handler errors are not the only way a request fails: an extractor can refuse
+/// a request before any handler runs, and `axum` answers those rejections in
+/// `text/plain`. A caller that parses `{"error":{"code",...}}` cannot read such
+/// a body, so it learns *that* it failed without learning *why*. Rejections are
+/// routed through this function so that every failure of this API has the same
+/// machine-readable shape.
+pub fn error_envelope(status: StatusCode, code: &str, message: String) -> Response {
+    let body = ErrorResponse {
+        error: ErrorBody {
+            code: code.to_string(),
+            message,
+            details: None,
+        },
+    };
+
+    (status, Json(body)).into_response()
 }
 
 /// Result type for API handlers
