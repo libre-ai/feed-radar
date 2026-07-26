@@ -1,0 +1,26 @@
+name: Dead code
+
+# Fails when unreachable code reappears in the Rust workspace: a member no other
+# member depends on and that builds no binary, a `[workspace.dependencies]` entry
+# no member inherits, or a `.rs` file no `mod` declaration names.
+#
+# This is a hygiene gate, not the retired product CI: it runs `cargo metadata`
+# and reads manifests, and never compiles the workspace.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unreachable-code:
+    name: No unreachable workspace code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Detect unreachable workspace code (fail closed)
+        run: scripts/dead-code-gate.sh
