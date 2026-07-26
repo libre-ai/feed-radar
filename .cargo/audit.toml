@@ -1,14 +1,30 @@
-# cargo-audit config — mirrors deny.toml's temporary advisory waivers when cargo-deny sees the same advisory.
-# Some cargo-audit advisories may appear before cargo-deny reports them locally; keep those waivers explicit here.
-# Remove entries when dependencies are replaced or upstream fixes land.
+# cargo-audit advisory waivers for the lockfile-wide scan.
+#
+# Why this file is not redundant with `deny.toml`. `cargo audit` reads
+# `Cargo.lock`, which is feature-agnostic, so it sees every optional path in the
+# tree. `cargo deny` resolves a feature-selected graph, so with default features
+# it never reaches the optional `stripe` adapter, and it reports no `unsound`
+# advisory at any feature set. Measured on this tree: `cargo audit` reports
+# three advisories, `cargo deny --all-features` reports two, `cargo deny` with
+# default features reports none. Neither tool is a superset of the other, so
+# both lists are kept — see docs/adr/0005-dependency-advisory-waivers.md.
+#
+# Every entry below carries `expires=YYYY-MM-DD` and a `ref=` on the same line
+# as the advisory id. Both are mandatory and enforced by
+# `scripts/advisory-waiver-gate.sh`, which runs inside the required
+# `No unreachable workspace code` check. An undated waiver is a permanent one,
+# which is what this list was until 2026-07-26: it carried five entries for
+# advisories the resolved graph no longer triggers, including one attributed to
+# a dependency edge that does not exist.
+#
+# The anchor below is the date this list was last reviewed against the resolved
+# graph. It bounds the horizon rule — no waiver may be dated more than 365 days
+# past it — and it only moves by re-reading the entries.
+#
+# waiver-review-anchor: 2026-07-26
 [advisories]
 ignore = [
-    "RUSTSEC-2026-0174", # http-types via async-stripe
-    "RUSTSEC-2024-0384", # instant via async-stripe path
-    "RUSTSEC-2024-0436", # paste via UI dependencies
-    "RUSTSEC-2026-0173", # proc-macro-error2 via UI/validator dependencies
-    "RUSTSEC-2023-0071", # rsa via sqlx-mysql; no RSA private-key decryption boundary in current Postgres-first runtime
-    "RUSTSEC-2026-0097", # rand 0.7 via async-stripe/http-types; track with async-stripe replacement/upgrade
-    "RUSTSEC-2026-0194", # quick-xml NsReader via feed-rs 2.3; no upstream fix released (feed-rs pins quick-xml 0.37)
-    "RUSTSEC-2026-0195", # quick-xml via feed-rs 2.3; same tree as 0194, pending feed-rs bump
+    "RUSTSEC-2026-0174", # http-types 2.12.0, reached only through the optional `stripe` feature (async-stripe 0.39.1); in Cargo.lock, absent from the default build graph; expires=2026-09-30; ref=docs/adr/0005-dependency-advisory-waivers.md
+    "RUSTSEC-2024-0384", # instant 0.1.13, same optional `stripe` path (async-stripe -> http-types -> futures-lite -> fastrand); expires=2026-09-30; ref=docs/adr/0005-dependency-advisory-waivers.md
+    "RUSTSEC-2026-0097", # rand 0.7.3, same optional `stripe` path; classed `unsound`, which cargo-deny never reports, so this list is its only cover; expires=2026-09-30; ref=docs/adr/0005-dependency-advisory-waivers.md
 ]

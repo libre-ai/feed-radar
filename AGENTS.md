@@ -35,7 +35,7 @@ Verified against `Cargo.toml`, `e2e/package.json`, `deny.toml` and `scripts/`. W
 - Lint: `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
 - Dependency policy: `cargo deny check` (`deny.toml`).
 - e2e (from `e2e/`): `npm run test` (Playwright).
-- Scripts in `scripts/`: `build-feedmind-app.sh`, `verify-feedmind-app.sh`, `generate-live-radar-proof.sh`, `verify-design-system.py`, `dead-code-gate.sh`, `comment-hygiene-gate.sh`, and the PostgreSQL role fixtures under `scripts/postgres/`.
+- Scripts in `scripts/`: `build-feedmind-app.sh`, `verify-feedmind-app.sh`, `generate-live-radar-proof.sh`, `verify-design-system.py`, `dead-code-gate.sh`, `comment-hygiene-gate.sh`, `advisory-waiver-gate.sh`, and the PostgreSQL role fixtures under `scripts/postgres/`.
 
 ## CI gates
 
@@ -44,7 +44,7 @@ The legacy product CI (Rust, security, contracts, release) was retired from this
 - `Context hygiene` (`.github/workflows/context-hygiene.yml`) — blocks private identifiers and machine-local paths from entering the public tree.
 - `db-inspection` (`.github/workflows/db-inspection.yml`) — fail-closed inspection of `migrations/` against `db-security-manifest.json`.
 - `Licensing` (`.github/workflows/licensing.yml`) — REUSE compliance against the per-path mapping in `REUSE.toml`.
-- `Dead code` (`.github/workflows/dead-code.yml`) — fails when a workspace member, a `[workspace.dependencies]` entry or a module file becomes unreachable (`scripts/dead-code-gate.sh`); the same job also fails on commented-out code and on a `TODO`/`FIXME`/`HACK` carrying no scope, issue or document reference (`scripts/comment-hygiene-gate.sh`).
+- `Dead code` (`.github/workflows/dead-code.yml`) — fails when a workspace member, a `[workspace.dependencies]` entry or a module file becomes unreachable (`scripts/dead-code-gate.sh`); the same job also fails on commented-out code and on a `TODO`/`FIXME`/`HACK` carrying no scope, issue or document reference (`scripts/comment-hygiene-gate.sh`), and on an advisory waiver in `.cargo/audit.toml` or `deny.toml` that carries no expiry date, no reference, a date beyond the review horizon, a date that disagrees between the two files, or a date already passed (`scripts/advisory-waiver-gate.sh`). The three scripts share this job so each inherits its branch-protection requirement.
 
 The fifth **does** compile, deliberately — it guards a defect class that is invisible to every check stopping at manifests:
 
