@@ -203,10 +203,8 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Load .env file
     dotenvy::dotenv().ok();
 
-    // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env().add_directive("feedmind_cli=info".parse()?))
         .init();
@@ -416,7 +414,6 @@ struct SyncCuratedSummary {
     state_format: &'static str,
 }
 
-/// Flatten OPML outlines to a list of feeds with folder info
 fn opml_summary(file: &PathBuf) -> Result<()> {
     let content = std::fs::read_to_string(file).context("Failed to read OPML file")?;
     let doc = OpmlParser::parse(&content).context("Failed to parse OPML file")?;
@@ -1061,6 +1058,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
+/// Flatten OPML outlines to a list of feeds with folder info
 fn flatten_outlines(outlines: &[OpmlOutline], parent_folder: Option<&str>) -> Vec<FlatFeed> {
     let mut feeds = Vec::new();
 
@@ -1112,13 +1110,10 @@ async fn import_opml(
 ) -> Result<()> {
     info!(opml_path = ?file, email_hash = %sha256_tag(email.as_bytes()), "Importing OPML");
 
-    // Read OPML file
     let content = std::fs::read_to_string(file).context("Failed to read OPML file")?;
 
-    // Parse OPML
     let doc = OpmlParser::parse(&content).context("Failed to parse OPML file")?;
 
-    // Flatten the hierarchical structure
     let feeds = flatten_outlines(&doc.outlines, None);
 
     let folder_names: std::collections::HashSet<_> =
@@ -1130,7 +1125,6 @@ async fn import_opml(
         folder_names.len()
     );
 
-    // Get or create user
     let user_id = get_or_create_user(auth_pool, email, password).await?;
     let mut tx = feedmind_storage::TenantTransaction::begin(pool, user_id)
         .await
@@ -1206,14 +1200,12 @@ async fn export_opml(
         .await
         .context("Failed to establish tenant context")?;
 
-    // Get folders
     let folders: Vec<(Uuid, String)> =
         sqlx::query_as("SELECT id, name FROM folders WHERE user_id = $1 ORDER BY name")
             .bind(user_id)
             .fetch_all(tx.connection())
             .await?;
 
-    // Get feeds
     let feeds: Vec<(String, String, Option<String>, Option<Uuid>)> = sqlx::query_as(
         "SELECT title, url, site_url, folder_id FROM feeds WHERE user_id = $1 ORDER BY title",
     )
@@ -1224,7 +1216,6 @@ async fn export_opml(
         .await
         .context("Failed to close tenant context")?;
 
-    // Build folder map
     let folder_map: HashMap<Uuid, String> = folders.into_iter().collect();
 
     // Group feeds by folder
@@ -1235,7 +1226,6 @@ async fn export_opml(
         folder_feeds.entry(*folder_id).or_default().push(outline);
     }
 
-    // Build outlines
     let mut outlines = Vec::new();
 
     // Root-level feeds (no folder)
@@ -1243,7 +1233,6 @@ async fn export_opml(
         outlines.extend(root_feeds);
     }
 
-    // Folder feeds
     for (folder_id, folder_name) in &folder_map {
         if let Some(feed_outlines) = folder_feeds.remove(&Some(*folder_id)) {
             let mut folder = OpmlOutline::folder(folder_name.clone());
@@ -1388,7 +1377,6 @@ async fn create_folder(
     user_id: Uuid,
     name: &str,
 ) -> Result<Uuid> {
-    // Try to get existing folder
     let existing: Option<Uuid> =
         sqlx::query_scalar("SELECT id FROM folders WHERE user_id = $1 AND name = $2")
             .bind(user_id)
@@ -1400,7 +1388,6 @@ async fn create_folder(
         return Ok(id);
     }
 
-    // Create new folder
     let folder_id: Uuid =
         sqlx::query_scalar("INSERT INTO folders (user_id, name) VALUES ($1, $2) RETURNING id")
             .bind(user_id)

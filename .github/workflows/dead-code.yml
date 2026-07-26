@@ -4,6 +4,12 @@ name: Dead code
 # member depends on and that builds no binary, a `[workspace.dependencies]` entry
 # no member inherits, or a `.rs` file no `mod` declaration names.
 #
+# The same job also gates comment hygiene, because a statement parked behind
+# `//` is unreachable code that no manifest or `mod` declaration can see. The
+# two scripts are separate; they share this job so the check inherits the
+# branch-protection requirement already attached to it. The job name below is
+# the protected check identifier — renaming it silently drops the requirement.
+#
 # This is a hygiene gate, not the retired product CI: it runs `cargo metadata`
 # and reads manifests, and never compiles the workspace.
 on:
@@ -24,3 +30,6 @@ jobs:
 
       - name: Detect unreachable workspace code (fail closed)
         run: scripts/dead-code-gate.sh
+
+      - name: Detect unreachable code in comments (fail closed)
+        run: scripts/comment-hygiene-gate.sh

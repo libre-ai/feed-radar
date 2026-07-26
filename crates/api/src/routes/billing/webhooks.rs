@@ -42,7 +42,6 @@ pub async fn handle_webhook(
         }
     };
 
-    // Get signature from headers
     let signature = match headers.get("Stripe-Signature") {
         Some(sig) => match sig.to_str() {
             Ok(s) => s,
@@ -74,13 +73,11 @@ pub async fn handle_webhook(
         return StatusCode::OK;
     }
 
-    // Process the event
     if let Err(e) = process_event(&state, &event).await {
         tracing::error!(event_hash = %safe_ref(event.id.as_ref()), error = %e, "Failed to process webhook event");
         // Don't return error to Stripe - we'll retry via our own logic if needed
     }
 
-    // Mark as processed
     if let Err(e) = mark_processed(
         state.worker_db(),
         event.id.as_ref(),
@@ -215,7 +212,6 @@ async fn handle_subscription_update(
 
     let stripe_sub_id = sub.id.to_string();
 
-    // Update subscription status
     sqlx::query(
         r#"
         UPDATE subscriptions SET
@@ -303,7 +299,6 @@ async fn handle_subscription_deleted(
     .fetch_optional(db)
     .await?;
 
-    // Mark subscription as canceled
     sqlx::query(
         r#"
         UPDATE subscriptions SET
@@ -357,7 +352,6 @@ async fn handle_invoice_update(
         }
     };
 
-    // Get subscription ID if exists
     let subscription_id: Option<(Uuid,)> = if let Some(sub) = &invoice.subscription {
         let sub_id = match sub {
             stripe::Expandable::Id(id) => id.to_string(),
@@ -371,7 +365,6 @@ async fn handle_invoice_update(
         None
     };
 
-    // Upsert invoice
     sqlx::query(
         r#"
         INSERT INTO invoices (
@@ -444,7 +437,6 @@ async fn handle_invoice_update(
 async fn handle_invoice_paid(db: &sqlx::PgPool, invoice: &stripe::Invoice) -> Result<(), ApiError> {
     let stripe_invoice_id = invoice.id.to_string();
 
-    // Update invoice with paid_at
     sqlx::query(
         r#"
         UPDATE invoices SET
@@ -518,7 +510,6 @@ async fn handle_invoice_payment_failed(
             .execute(db)
             .await?;
 
-            // Log dunning event
             sqlx::query(
                 r#"
                 INSERT INTO dunning_history (user_id, subscription_id, action, details)

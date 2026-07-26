@@ -41,7 +41,6 @@ async fn health_check() -> Json<HealthResponse> {
 async fn readiness_check(
     State(state): State<AppState>,
 ) -> Result<Json<ReadinessResponse>, (StatusCode, Json<ReadinessResponse>)> {
-    // Check database connection
     let db_status = match sqlx::query_scalar::<_, i32>("SELECT 1")
         .fetch_one(state.db())
         .await
@@ -50,7 +49,6 @@ async fn readiness_check(
         Err(_) => "error",
     };
 
-    // Check Redis connection
     let mut redis = state.redis();
     let redis_status = match redis::cmd("PING").query_async::<String>(&mut redis).await {
         Ok(_) => "ok",

@@ -3,7 +3,6 @@
 # Remove entries when dependencies are replaced or upstream fixes land.
 [advisories]
 ignore = [
-    "RUSTSEC-2025-0057", # fxhash via scraper
     "RUSTSEC-2026-0174", # http-types via async-stripe
     "RUSTSEC-2024-0384", # instant via async-stripe path
     "RUSTSEC-2024-0436", # paste via UI dependencies

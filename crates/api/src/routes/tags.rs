@@ -85,7 +85,6 @@ pub struct ListMeta {
     pub total: i64,
 }
 
-// Regex for hex color validation
 use std::sync::OnceLock;
 
 pub fn hex_color_regex() -> &'static regex::Regex {
@@ -167,7 +166,6 @@ async fn create_tag(
         ));
     }
 
-    // Insert tag
     let tag: TagRow = sqlx::query_as(
         r#"
         WITH inserted AS (
@@ -266,7 +264,6 @@ async fn update_tag(
         }
     }
 
-    // Update tag
     let tag: TagRow = sqlx::query_as(
         r#"
         WITH updated AS (
@@ -410,7 +407,6 @@ async fn add_tag_to_article(
     .map_err(|e| ApiError::Internal(format!("Failed to add tag: {}", e)))?;
     tx.commit().await?;
 
-    // Return updated tags list
     get_article_tags(State(state), user, Path(article_id)).await
 }
 

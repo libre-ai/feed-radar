@@ -42,14 +42,12 @@ impl FromRequestParts<AppState> for CurrentUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        // Get Authorization header
         let auth_header = parts
             .headers
             .get("Authorization")
             .and_then(|v| v.to_str().ok())
             .ok_or_else(|| ApiError::Unauthorized("Missing Authorization header".to_string()))?;
 
-        // Extract Bearer token
         let token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
             ApiError::Unauthorized("Invalid Authorization header format".to_string())
         })?;
@@ -72,11 +70,9 @@ impl FromRequestParts<AppState> for CurrentUser {
 
         let claims = token_data.claims;
 
-        // Parse user ID
         let user_id = Uuid::parse_str(&claims.sub)
             .map_err(|_| ApiError::Unauthorized("Invalid user ID in token".to_string()))?;
 
-        // Parse tier
         let tier = UserTier::from_str(&claims.tier);
 
         // Get account status inside a transaction-local tenant boundary.
@@ -96,9 +92,12 @@ impl FromRequestParts<AppState> for CurrentUser {
             .await
             .map_err(|_| ApiError::Internal("Failed to close tenant context".to_string()))?;
 
-        // Check if suspended - allow only read operations and billing
+        // A suspended account keeps only the paths that let it pay or leave:
+        // billing, the Stripe webhook and the OPML export. The test is on the
+        // path alone — the HTTP method is never consulted, so billing writes
+        // stay reachable and a new read endpoint does NOT become reachable by
+        // virtue of being a GET.
         if account_status == AccountStatus::Suspended {
-            // Check if this is a billing or read-only request
             let path = parts.uri.path();
             let is_billing =
                 path.starts_with("/api/v1/billing") || path.starts_with("/webhooks/stripe");

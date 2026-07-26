@@ -50,17 +50,14 @@ struct RuleRow {
 impl QueueConsumer {
     /// Create a new queue consumer
     pub async fn new(config: &WorkerConfig) -> anyhow::Result<Self> {
-        // Connect to PostgreSQL
         let db = PgPoolOptions::new()
             .max_connections(10)
             .connect(&config.worker_database_url)
             .await?;
 
-        // Connect to Redis
         let redis_client = redis::Client::open(config.redis_url.as_str())?;
         let redis = ConnectionManager::new(redis_client).await?;
 
-        // Create feed fetcher
         let fetcher = FeedFetcher::new()?;
 
         Ok(Self {
@@ -94,7 +91,6 @@ impl QueueConsumer {
 
     /// Process the next job from the queue
     async fn process_next_job(&mut self) -> anyhow::Result<Option<Job>> {
-        // Pop job from Redis queue
         let job_data: Option<String> = redis::cmd("LPOP")
             .arg("feedmind:jobs")
             .query_async(&mut self.redis)
@@ -106,7 +102,6 @@ impl QueueConsumer {
 
         let job: Job = serde_json::from_str(&data)?;
 
-        // Process based on job type
         match &job.job_type {
             JobType::FetchFeed { feed_id } => {
                 self.process_fetch_feed(*feed_id).await?;
@@ -148,7 +143,6 @@ impl QueueConsumer {
     async fn process_fetch_feed(&self, feed_id: uuid::Uuid) -> anyhow::Result<()> {
         info!(%feed_id, "Fetching feed");
 
-        // Get feed URL from database
         let feed: Option<FeedRow> =
             sqlx::query_as("SELECT id, user_id, url FROM feeds WHERE id = $1")
                 .bind(feed_id)
@@ -171,14 +165,12 @@ impl QueueConsumer {
                 let mut new_article_ids = Vec::new();
 
                 for item in items {
-                    // Calculate word count
                     let word_count = item
                         .content
                         .as_ref()
                         .or(item.summary.as_ref())
                         .map(|text| text.split_whitespace().count() as i32);
 
-                    // Insert with ON CONFLICT DO NOTHING
                     let result: Option<(uuid::Uuid,)> = sqlx::query_as(
                         r#"
                         INSERT INTO articles (feed_id, user_id, guid, url, title, author, summary, content, published_at, word_count)
@@ -236,7 +228,6 @@ impl QueueConsumer {
                 .execute(&self.db)
                 .await?;
 
-                // Queue rule evaluation for new articles
                 if !new_article_ids.is_empty() {
                     let job = Job::new(JobType::EvaluateRules {
                         article_ids: new_article_ids,
@@ -269,7 +260,6 @@ impl QueueConsumer {
 
         info!(count = article_ids.len(), "Evaluating rules for articles");
 
-        // Get user_id from first article
         let user_id: Option<uuid::Uuid> =
             sqlx::query_scalar("SELECT user_id FROM articles WHERE id = $1")
                 .bind(article_ids[0])
@@ -280,7 +270,6 @@ impl QueueConsumer {
             return Ok(());
         };
 
-        // Get active regex rules for this user
         let rules: Vec<RuleRow> = sqlx::query_as(
             r#"
             SELECT id, config, action, stop_on_match
@@ -297,14 +286,12 @@ impl QueueConsumer {
             return Ok(());
         }
 
-        // Get articles
         let articles: Vec<(uuid::Uuid, String, Option<String>, Option<String>)> =
             sqlx::query_as("SELECT id, title, summary, content FROM articles WHERE id = ANY($1)")
                 .bind(article_ids)
                 .fetch_all(&self.db)
                 .await?;
 
-        // Compile regexes
         let compiled_rules: Vec<_> = rules
             .iter()
             .filter_map(|rule| {
@@ -325,7 +312,6 @@ impl QueueConsumer {
             })
             .collect();
 
-        // Evaluate each article
         for (article_id, title, summary, content) in &articles {
             let text = format!(
                 "{} {} {}",
@@ -338,7 +324,6 @@ impl QueueConsumer {
                 if let Some(matched) = regex.find(&text) {
                     info!(%article_id, rule_id = %rule.id, "Rule matched");
 
-                    // Apply action
                     match rule.action.as_str() {
                         "hide" => {
                             sqlx::query(
@@ -383,7 +368,6 @@ impl QueueConsumer {
                     .execute(&self.db)
                     .await;
 
-                    // Update rule match count
                     let _ = sqlx::query(
                         "UPDATE rules SET match_count = match_count + 1, last_match_at = NOW() WHERE id = $1"
                     )

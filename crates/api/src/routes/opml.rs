@@ -72,7 +72,6 @@ async fn import_opml(
         body.to_vec()
     };
 
-    // Parse OPML
     let doc = OpmlParser::parse_bytes(&content)
         .map_err(|e| ApiError::BadRequest(format!("Invalid OPML: {}", e)))?;
 
@@ -119,7 +118,6 @@ async fn import_opml(
         }
     }
 
-    // Commit transaction
     tx.commit()
         .await
         .map_err(|e| ApiError::Internal(format!("Commit error: {}", e)))?;
@@ -151,10 +149,8 @@ fn import_outline<'a>(
         let mut errors: Vec<ImportError> = Vec::new();
 
         if outline.is_feed() {
-            // This is a feed - import it
             let url = outline.xml_url.as_ref().unwrap();
 
-            // Check if feed already exists
             let exists: bool = sqlx::query_scalar(
                 "SELECT EXISTS(SELECT 1 FROM feeds WHERE user_id = $1 AND url = $2)",
             )
@@ -201,7 +197,6 @@ fn import_outline<'a>(
             // This is a folder - create it and recurse
             let folder_name = outline.text.clone();
 
-            // Check if folder already exists at this level
             let existing_folder_id: Option<Uuid> = sqlx::query_scalar(
                 r#"
             SELECT id FROM folders
@@ -219,7 +214,6 @@ fn import_outline<'a>(
             let folder_id = if let Some(id) = existing_folder_id {
                 id
             } else {
-                // Create new folder
                 let next_position: i32 = sqlx::query_scalar(
                     r#"
                 SELECT COALESCE(MAX(position), -1) + 1
@@ -248,7 +242,6 @@ fn import_outline<'a>(
                 new_id
             };
 
-            // Recurse into children
             for child in &outline.children {
                 let (fi, fs, fc, errs) =
                     import_outline(tx, user_id, child, Some(folder_id)).await?;
@@ -304,13 +297,11 @@ async fn export_opml(
     .map_err(|e| ApiError::Internal(format!("Database error: {}", e)))?;
     tx.commit().await?;
 
-    // Build OPML document
     let mut doc = OpmlDocument::new(Some("FeedMind Export".to_string()));
     doc.owner_email = Some(user.email.clone());
     doc.date_created = Some(Utc::now().to_rfc2822());
 
     // Build folder hierarchy
-    // First, create a map of folder_id -> folder
     let mut folder_map: std::collections::HashMap<Uuid, OpmlOutline> =
         std::collections::HashMap::new();
 
@@ -361,7 +352,6 @@ async fn export_opml(
     ) -> Option<OpmlOutline> {
         let mut outline = folder_map.remove(&folder_id)?;
 
-        // Add child folders
         if let Some(child_ids) = child_folder_map.get(&folder_id) {
             for child_id in child_ids {
                 if let Some(child_outline) =
@@ -379,14 +369,12 @@ async fn export_opml(
         if let Some(folder_outline) =
             build_folder_outline(folder_id, &mut folder_map, &child_folder_map)
         {
-            // Only add if folder has content
             if !folder_outline.children.is_empty() {
                 doc.outlines.push(folder_outline);
             }
         }
     }
 
-    // Export to string
     let xml = OpmlExporter::export(&doc);
 
     let headers = [

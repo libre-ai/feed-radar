@@ -159,7 +159,6 @@ async fn create_folder(
         ));
     }
 
-    // Get next position
     let next_position: i32 = sqlx::query_scalar(
         r#"
         SELECT COALESCE(MAX(position), -1) + 1
@@ -173,7 +172,6 @@ async fn create_folder(
     .await
     .map_err(|e| ApiError::Internal(format!("Database error: {}", e)))?;
 
-    // Insert folder
     let folder: FolderRow = sqlx::query_as(
         r#"
         WITH inserted AS (
@@ -257,7 +255,6 @@ async fn update_folder(
 
     // If changing parent, verify new parent exists (and is not self or descendant)
     if let Some(new_parent_id) = req.parent_id {
-        // Cannot set parent to self
         if new_parent_id == folder_id {
             return Err(ApiError::Validation(
                 "Cannot set folder as its own parent".to_string(),
@@ -331,7 +328,6 @@ async fn update_folder(
         }
     }
 
-    // Update folder
     let folder: FolderRow = sqlx::query_as(
         r#"
         WITH updated AS (
@@ -396,7 +392,6 @@ async fn reorder_folder(
     Json(req): Json<ReorderFolderRequest>,
 ) -> ApiResult<Json<FolderResponse>> {
     let mut tx = state.tenant_tx(user.id).await?;
-    // Get current folder info
     let current: Option<(Option<Uuid>, i32)> =
         sqlx::query_as("SELECT parent_id, position FROM folders WHERE id = $1 AND user_id = $2")
             .bind(folder_id)
@@ -410,7 +405,6 @@ async fn reorder_folder(
 
     let new_position = req.position;
 
-    // Skip if position hasn't changed
     if current_position == new_position {
         tx.rollback().await?;
         return get_folder(State(state), user, Path(folder_id)).await;
@@ -459,7 +453,6 @@ async fn reorder_folder(
         .map_err(|e| ApiError::Internal(format!("Failed to shift folders: {}", e)))?;
     }
 
-    // Update target folder position
     let folder: FolderRow = sqlx::query_as(
         r#"
         WITH updated AS (

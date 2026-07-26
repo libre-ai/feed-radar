@@ -92,7 +92,6 @@ impl IntoResponse for ApiError {
             ),
         };
 
-        // Log internal errors
         if status == StatusCode::INTERNAL_SERVER_ERROR {
             tracing::error!(error = %self, "Internal server error");
         }

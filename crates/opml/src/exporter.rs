@@ -109,8 +109,6 @@ impl OpmlExporter {
 mod tests {
     use super::*;
 
-    // NOTE: Roundtrip test disabled because scraper HTML parser doesn't
-    // handle XML custom elements correctly. See opml/parser.rs for details.
     #[test]
     fn test_export_structure() {
         let mut doc = OpmlDocument::new(Some("Test Export".to_string()));
