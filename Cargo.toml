@@ -28,6 +28,9 @@ tokio = { version = "1.43", features = ["full"] }
 # Web framework
 axum = { version = "0.8", features = ["macros"] }
 tower-http = { version = "0.7", features = ["cors", "trace", "compression-gzip"] }
+# Test-only: drives an assembled Router through one real request/response cycle.
+# Already in the tree as an axum dependency, so no new supply-chain surface.
+tower = { version = "0.5", features = ["util"] }
 
 # Database
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls", "macros", "migrate", "postgres", "uuid", "chrono", "json"] }
