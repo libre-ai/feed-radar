@@ -368,3 +368,267 @@ pub fn router() -> Router<AppState> {
             get(get_article).put(update_article),
         )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `UpdateArticleRequest::tags` is part of the accepted request contract.
+    ///
+    /// This test exists to make the drop explicit: the field deserialises, and
+    /// no handler in this module ever reads it. Whoever makes `tags` meaningful
+    /// must delete this test rather than let the contract change in silence.
+    #[test]
+    fn update_request_accepts_tags_that_no_handler_reads() {
+        let req: UpdateArticleRequest =
+            serde_json::from_str(r#"{"is_read":true,"tags":["rust","sovereignty"]}"#)
+                .expect("a body carrying tags must deserialise");
+
+        assert_eq!(req.is_read, Some(true));
+        assert_eq!(
+            req.tags,
+            Some(vec!["rust".to_string(), "sovereignty".to_string()]),
+            "tags is accepted by the request contract"
+        );
+    }
+
+    /// A tags-only update reaches the "nothing to update" branch of
+    /// `update_article`: the request is answered from `get_article` and no
+    /// write is issued, even though the caller asked for one.
+    #[test]
+    fn a_tags_only_update_carries_no_field_the_handler_acts_on() {
+        let req: UpdateArticleRequest = serde_json::from_str(r#"{"tags":["rust"]}"#)
+            .expect("a tags-only body must deserialise");
+
+        assert!(
+            req.is_read.is_none() && req.is_starred.is_none(),
+            "update_article treats this as nothing to update and returns the article unchanged"
+        );
+        assert!(req.tags.is_some(), "yet the caller did ask for a change");
+    }
+
+    /// Deleting the field would not surface the loss.
+    ///
+    /// Serde ignores unknown fields unless `deny_unknown_fields` is set, and no
+    /// request type in this module sets it. A shrunk struct still accepts the
+    /// same body and still discards `tags` — silently. Removing the field is
+    /// therefore not, on its own, a way to inform the caller.
+    #[test]
+    fn removing_the_field_would_still_accept_and_discard_the_same_body() {
+        #[derive(Debug, Deserialize)]
+        struct WithoutTags {
+            is_read: Option<bool>,
+            is_starred: Option<bool>,
+        }
+
+        let shrunk: WithoutTags =
+            serde_json::from_str(r#"{"is_read":true,"tags":["rust","sovereignty"]}"#)
+                .expect("serde ignores unknown fields unless deny_unknown_fields is set");
+
+        assert_eq!(shrunk.is_read, Some(true));
+        assert!(shrunk.is_starred.is_none());
+    }
+
+    /// `search` and `cursor` share the fate of `tags` on the list endpoint.
+    ///
+    /// Both are accepted by `ListArticlesQuery` and neither is read by
+    /// `list_articles`, which sorts by date and hardcodes `ListMeta::cursor` to
+    /// `None`. A caller that filters or paginates gets an unfiltered first page
+    /// and no way to advance.
+    #[test]
+    fn list_query_accepts_search_and_cursor_that_no_handler_reads() {
+        let query: ListArticlesQuery =
+            serde_json::from_str(r#"{"search":"sovereignty","cursor":"opaque-page-2"}"#)
+                .expect("a body carrying search and cursor must deserialise");
+
+        assert_eq!(query.search.as_deref(), Some("sovereignty"));
+        assert_eq!(query.cursor.as_deref(), Some("opaque-page-2"));
+    }
+
+    const TEST_DATABASE_URL: &str = "FEED_RADAR_TEST_DATABASE_URL";
+    const TEST_REDIS_URL: &str = "FEED_RADAR_TEST_REDIS_URL";
+
+    fn probe_config(database_url: String, redis_url: String) -> crate::config::AppConfig {
+        crate::config::AppConfig {
+            host: "127.0.0.1".to_string(),
+            port: 0,
+            database_url: database_url.clone(),
+            auth_database_url: database_url,
+            worker_database_url: None,
+            redis_url,
+            jwt_secret: "test-only-jwt-secret".to_string(),
+            jwt_expiration: 3600,
+            master_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".to_string(),
+            master_key_version: 1,
+            environment: "development".to_string(),
+            stripe: crate::config::StripeConfig {
+                stripe_secret_key: None,
+                stripe_publishable_key: None,
+                stripe_webhook_secret: None,
+                stripe_price_pro_monthly: None,
+                stripe_price_pro_annual: None,
+                stripe_price_team_monthly: None,
+                stripe_price_team_annual: None,
+                stripe_price_ai_tokens: None,
+                stripe_price_api_calls: None,
+            },
+        }
+    }
+
+    /// End-to-end proof against a live PostgreSQL: the endpoint answers 200 to
+    /// an update carrying tags, applies the rest of the request, and leaves the
+    /// article's tags exactly as they were.
+    #[tokio::test]
+    async fn update_article_answers_success_while_discarding_the_requested_tags() {
+        let Ok(database_url) = std::env::var(TEST_DATABASE_URL) else {
+            eprintln!("skipping live update_article probe: {TEST_DATABASE_URL} is not set");
+            return;
+        };
+        let redis_url =
+            std::env::var(TEST_REDIS_URL).expect("live probe requires FEED_RADAR_TEST_REDIS_URL");
+
+        let state = AppState::new(&probe_config(database_url, redis_url))
+            .await
+            .expect("probe app state must build");
+        let pool = state.db().clone();
+
+        sqlx::migrate!("../../migrations")
+            .run(&pool)
+            .await
+            .expect("migrations must run");
+
+        let user_id = Uuid::new_v4();
+        let feed_id = Uuid::new_v4();
+        let article_id = Uuid::new_v4();
+        let tag_id = Uuid::new_v4();
+
+        sqlx::query("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, 'probe-only')")
+            .bind(user_id)
+            .bind(format!("tags-probe-{user_id}@example.test"))
+            .execute(&pool)
+            .await
+            .expect("seed user");
+        sqlx::query(
+            "INSERT INTO feeds (id, user_id, url, title) VALUES ($1, $2, $3, 'Probe feed')",
+        )
+        .bind(feed_id)
+        .bind(user_id)
+        .bind(format!("https://example.test/{feed_id}.xml"))
+        .execute(&pool)
+        .await
+        .expect("seed feed");
+        sqlx::query(
+            r#"INSERT INTO articles (id, feed_id, user_id, guid, title, categories)
+               VALUES ($1, $2, $3, $4, 'Probe article', '["seeded-category"]'::jsonb)"#,
+        )
+        .bind(article_id)
+        .bind(feed_id)
+        .bind(user_id)
+        .bind(format!("guid-{article_id}"))
+        .execute(&pool)
+        .await
+        .expect("seed article");
+        sqlx::query("INSERT INTO tags (id, user_id, name) VALUES ($1, $2, 'seeded-tag')")
+            .bind(tag_id)
+            .bind(user_id)
+            .execute(&pool)
+            .await
+            .expect("seed tag");
+        sqlx::query("INSERT INTO article_tags (article_id, tag_id) VALUES ($1, $2)")
+            .bind(article_id)
+            .bind(tag_id)
+            .execute(&pool)
+            .await
+            .expect("seed article tag");
+
+        let user = CurrentUser {
+            id: user_id,
+            email: "tags-probe@example.test".to_string(),
+            tier: crate::extractors::auth::UserTier::Free,
+            account_status: crate::extractors::auth::AccountStatus::Active,
+        };
+
+        let requested_tags = vec!["brand-new-tag".to_string(), "another-new-tag".to_string()];
+        let response = update_article(
+            State(state.clone()),
+            user.clone(),
+            Path(article_id),
+            Json(UpdateArticleRequest {
+                is_read: Some(true),
+                is_starred: None,
+                tags: Some(requested_tags.clone()),
+            }),
+        )
+        .await;
+
+        let http = axum::response::IntoResponse::into_response(response);
+        let status = http.status();
+        let body = axum::body::to_bytes(http.into_body(), 64 * 1024)
+            .await
+            .expect("response body must read");
+        let body: serde_json::Value =
+            serde_json::from_slice(&body).expect("response body must be JSON");
+
+        eprintln!("PROBE status         = {status}");
+        eprintln!("PROBE requested tags = {requested_tags:?}");
+        eprintln!(
+            "PROBE response body  = {}",
+            serde_json::to_string(&body).expect("body must serialise")
+        );
+
+        let stored_tags: Vec<String> = sqlx::query_scalar(
+            r#"SELECT t.name FROM article_tags at
+               JOIN tags t ON t.id = at.tag_id
+               WHERE at.article_id = $1 ORDER BY t.name"#,
+        )
+        .bind(article_id)
+        .fetch_all(&pool)
+        .await
+        .expect("stored tags must read");
+
+        let stored_categories: serde_json::Value =
+            sqlx::query_scalar("SELECT categories FROM articles WHERE id = $1")
+                .bind(article_id)
+                .fetch_one(&pool)
+                .await
+                .expect("stored categories must read");
+
+        let stored_is_read: bool = sqlx::query_scalar("SELECT is_read FROM articles WHERE id = $1")
+            .bind(article_id)
+            .fetch_one(&pool)
+            .await
+            .expect("stored is_read must read");
+
+        eprintln!("PROBE stored tags       = {stored_tags:?}");
+        eprintln!("PROBE stored categories = {stored_categories}");
+        eprintln!("PROBE stored is_read    = {stored_is_read}");
+
+        assert_eq!(
+            status,
+            axum::http::StatusCode::OK,
+            "the endpoint reports success"
+        );
+        assert!(
+            body.get("data").is_some(),
+            "the success body carries the article and says nothing about tags"
+        );
+        assert!(
+            body.to_string().find("brand-new-tag").is_none(),
+            "no part of the response mentions the tags that were asked for"
+        );
+        assert!(
+            stored_is_read,
+            "the rest of the same request WAS applied, so this is not a rejected call"
+        );
+        assert_eq!(
+            stored_tags,
+            vec!["seeded-tag".to_string()],
+            "the requested tags were discarded: storage still holds only the seeded tag"
+        );
+        assert_eq!(
+            stored_categories,
+            serde_json::json!(["seeded-category"]),
+            "the article's categories were untouched as well"
+        );
+    }
+}
