@@ -56,7 +56,6 @@ pub async fn list_invoices(
     let mut tx = state.tenant_tx(user.id).await?;
     let mut service = BillingService::new(tx.connection(), stripe, state.stripe_config());
 
-    // Limit to 100 max
     let limit = params.limit.min(100);
 
     let invoices = service.list_invoices(user.id, limit).await?;

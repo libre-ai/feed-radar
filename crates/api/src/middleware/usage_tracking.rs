@@ -132,7 +132,6 @@ pub async fn check_usage_limits(
 
     let (ai_tokens, api_calls) = get_period_usage(db, user_id, period_start).await?;
 
-    // Get limits based on tier
     let (ai_limit, api_limit) = match tier {
         "free" => (10_000i64, 1_000i64),      // 10k tokens, 1k API calls
         "pro" => (500_000i64, 50_000i64),     // 500k tokens, 50k API calls

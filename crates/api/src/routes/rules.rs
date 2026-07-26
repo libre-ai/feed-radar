@@ -55,7 +55,7 @@ pub struct UpdateRuleRequest {
 pub struct RuleConfig {
     pub pattern: String,
     #[serde(default = "default_fields")]
-    pub fields: Vec<String>, // ["title", "content", "author", "url"]
+    pub fields: Vec<String>, // accepted values: see VALID_FIELDS
     #[serde(default)]
     pub case_sensitive: bool,
 }
@@ -183,7 +183,6 @@ fn validate_config(config: &RuleConfig) -> ApiResult<regex::Regex> {
         .build()
         .map_err(|e| ApiError::Validation(format!("Invalid regex pattern: {}", e)))?;
 
-    // Validate fields
     for field in &config.fields {
         if !VALID_FIELDS.contains(&field.as_str()) {
             return Err(ApiError::Validation(format!(
@@ -373,7 +372,6 @@ async fn create_rule(
     let priority = req.priority.unwrap_or(0);
     let stop_on_match = req.stop_on_match.unwrap_or(false);
 
-    // Insert rule
     let rule: RuleRow = sqlx::query_as(
         r#"
         INSERT INTO rules (user_id, name, description, rule_type, config, action, action_params,
@@ -465,7 +463,6 @@ async fn update_rule(
         .or(existing.action_params.as_ref());
     validate_action_params(action, action_params)?;
 
-    // Build update query
     let config_json = req
         .config
         .as_ref()
@@ -572,7 +569,6 @@ async fn preview_rule(
     let re = validate_config(&req.config)?;
     let mut tx = state.tenant_tx(user.id).await?;
 
-    // Get recent articles (last 7 days)
     let seven_days_ago = Utc::now() - Duration::days(7);
     let limit = req.limit.min(100);
 
@@ -716,7 +712,6 @@ async fn reorder_rules(
         .await
         .map_err(|e| ApiError::Internal(format!("Commit error: {}", e)))?;
 
-    // Return updated list
     list_rules(
         State(state),
         user,

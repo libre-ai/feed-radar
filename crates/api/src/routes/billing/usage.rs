@@ -60,7 +60,6 @@ pub async fn get_usage_history(
     let mut tx = state.tenant_tx(user.id).await?;
     let mut service = BillingService::new(tx.connection(), stripe, state.stripe_config());
 
-    // Limit to 90 days
     let days = params.days.min(90);
 
     let history = service.get_usage_history(user.id, days).await?;

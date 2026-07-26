@@ -66,14 +66,11 @@ impl AppState {
             )
             .await?;
 
-        // Connect to Redis
         let redis_client = redis::Client::open(config.redis_url.as_str())?;
         let redis = ConnectionManager::new(redis_client).await?;
 
-        // Setup encryption
         let encryption = KeyEncryption::from_base64(&config.master_key, config.master_key_version)?;
 
-        // Setup Stripe client if configured
         #[cfg(feature = "stripe")]
         let stripe = if config.stripe.is_configured() {
             Some(StripeClient::new(config.stripe.secret_key()))

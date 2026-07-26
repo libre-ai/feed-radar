@@ -79,7 +79,6 @@ async fn register(
     State(state): State<AppState>,
     Json(req): Json<RegisterRequest>,
 ) -> ApiResult<Json<AuthResponse>> {
-    // Validate request
     req.validate()
         .map_err(|e| ApiError::Validation(e.to_string()))?;
 
@@ -117,7 +116,6 @@ async fn register(
         }
     })?;
 
-    // Generate JWT token
     let (token, expires_at) = generate_jwt(&user, state.jwt_secret(), state.jwt_expiration())?;
 
     // Update last login through the reviewed authentication boundary.
@@ -145,13 +143,11 @@ async fn login(
     State(state): State<AppState>,
     Json(req): Json<LoginRequest>,
 ) -> ApiResult<Json<AuthResponse>> {
-    // Validate request
     req.validate()
         .map_err(|e| ApiError::Validation(e.to_string()))?;
 
     let email = req.email.to_lowercase();
 
-    // Find user by email
     let user: Option<UserRow> = sqlx::query_as(
         "SELECT id, email, password_hash, display_name, tier FROM feed_radar_auth_find_user($1)",
     )
@@ -171,7 +167,6 @@ async fn login(
         .verify_password(req.password.as_bytes(), &parsed_hash)
         .map_err(|_| ApiError::Unauthorized("Invalid email or password".to_string()))?;
 
-    // Generate JWT token
     let (token, expires_at) = generate_jwt(&user, state.jwt_secret(), state.jwt_expiration())?;
 
     // Update last login through the reviewed authentication boundary.
@@ -211,7 +206,6 @@ async fn refresh(
     .ok_or_else(|| ApiError::Unauthorized("User not found".to_string()))?;
     tx.commit().await?;
 
-    // Generate new JWT token
     let (token, expires_at) = generate_jwt(&user, state.jwt_secret(), state.jwt_expiration())?;
 
     Ok(Json(AuthResponse {

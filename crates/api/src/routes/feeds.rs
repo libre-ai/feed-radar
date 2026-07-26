@@ -110,12 +110,10 @@ pub struct ListMeta {
 fn normalize_url(input: &str) -> String {
     let trimmed = input.trim();
 
-    // Already has a scheme
     if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
         return trimmed.to_string();
     }
 
-    // Add https:// prefix
     format!("https://{}", trimmed)
 }
 
@@ -235,7 +233,6 @@ fn filter_articles_for_initial_import(items: Vec<FeedItem>) -> Vec<FeedItem> {
         date_b.cmp(&date_a)
     });
 
-    // Limit to 20
     filtered.truncate(20);
     filtered
 }
@@ -304,7 +301,6 @@ async fn create_feed(
     req.validate()
         .map_err(|e| ApiError::Validation(e.to_string()))?;
 
-    // Normalize the URL (add https:// if missing)
     let normalized_url = normalize_url(&req.url);
 
     // Check feed limit in a short tenant transaction before network I/O.
@@ -332,7 +328,6 @@ async fn create_feed(
     let (feed_url, feed_meta, items) = match fetcher.fetch(&normalized_url).await {
         Ok((meta, items)) => (normalized_url.clone(), meta, items),
         Err(_) => {
-            // Try to discover RSS/Atom link from the HTML page
             let discovered_url = discover_feed_url(&normalized_url)
                 .await
                 .map_err(|e| ApiError::Validation(format!("Could not find RSS feed: {}", e)))?;
@@ -359,10 +354,8 @@ async fn create_feed(
         return Err(ApiError::Conflict("Feed already exists".to_string()));
     }
 
-    // Calculate priority based on frequency
     let priority = calculate_priority(&items);
 
-    // Filter articles for initial import (last 12 months, max 20)
     let articles_to_import = filter_articles_for_initial_import(items);
     let initial_article_count = articles_to_import.len() as i32;
 
@@ -371,7 +364,6 @@ async fn create_feed(
     let feed_type_str = feed_meta.feed_type.to_string();
     let icon_url = generate_icon_url(feed_meta.site_url.as_ref());
 
-    // Insert feed
     let feed: FeedRow = sqlx::query_as(
         r#"
         INSERT INTO feeds (user_id, url, title, description, site_url, icon_url, feed_type, folder_id, priority, last_fetched_at, article_count, unread_count)
@@ -395,7 +387,6 @@ async fn create_feed(
     .await
     .map_err(|e| ApiError::Internal(format!("Failed to create feed: {}", e)))?;
 
-    // Insert articles
     for item in articles_to_import {
         let guid = if item.guid.is_empty() {
             item.url
@@ -437,7 +428,6 @@ async fn create_feed(
         }
     }
 
-    // Enforce retention limit (max 200 articles per feed)
     if let Ok(deleted) = enforce_article_retention(&mut tx, feed.id, user.id).await {
         if deleted > 0 {
             tracing::info!(
@@ -448,7 +438,6 @@ async fn create_feed(
         }
     }
 
-    // Commit transaction
     tx.commit()
         .await
         .map_err(|e| ApiError::Internal(format!("Commit error: {}", e)))?;
@@ -587,7 +576,6 @@ async fn update_feed(
         .as_ref()
         .and_then(|cf| serde_json::to_value(cf).ok());
 
-    // Update feed
     let feed: FeedRow = sqlx::query_as(
         r#"
         UPDATE feeds SET

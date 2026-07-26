@@ -24,7 +24,6 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Load .env file
     dotenvy::dotenv().ok();
 
     // Initialize tracing
@@ -36,15 +35,12 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer().json())
         .init();
 
-    // Load configuration
     let config = AppConfig::load()?;
     info!("Configuration loaded");
 
-    // Create app state
     let state = AppState::new(&config).await?;
     info!("App state initialized");
 
-    // Build router
     let app = build_router(state);
 
     // Start server
@@ -58,9 +54,8 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn build_router(state: AppState) -> Router {
-    // CORS configuration
     let cors = CorsLayer::new()
-        .allow_origin(Any) // TODO: Restrict in production
+        .allow_origin(Any) // TODO(security): Restrict in production
         .allow_methods(Any)
         .allow_headers(Any);
 

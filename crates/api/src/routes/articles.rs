@@ -157,7 +157,6 @@ async fn list_articles(
     .await
     .map_err(|e| ApiError::Internal(format!("Database error: {}", e)))?;
 
-    // Get total count
     let total: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM articles WHERE user_id = $1 AND is_hidden = FALSE",
     )

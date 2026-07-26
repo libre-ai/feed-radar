@@ -157,7 +157,6 @@ impl AppConfig {
             anyhow::bail!("MASTER_KEY is required");
         }
 
-        // Log Stripe configuration status
         if app_config.stripe.is_configured() {
             tracing::info!("Stripe billing is configured");
         } else {

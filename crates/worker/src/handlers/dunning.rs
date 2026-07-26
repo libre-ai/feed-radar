@@ -87,7 +87,6 @@ pub async fn check_dunning_status(
         let dunning_start = sub.dunning_started_at;
         let days_in_dunning = (now - dunning_start).num_days();
 
-        // Determine action based on days in dunning
         let action = if days_in_dunning >= config.suspension_days {
             DunningAction::Suspend
         } else if days_in_dunning >= config.grace_period_days {
@@ -107,7 +106,6 @@ pub async fn check_dunning_status(
             continue;
         }
 
-        // Execute action
         match action {
             DunningAction::SendDay1Notice
             | DunningAction::SendDay3Reminder
@@ -138,7 +136,6 @@ pub async fn check_dunning_status(
             }
             DunningAction::Suspend => {
                 if sub.account_status == "suspended" {
-                    // Already suspended
                     continue;
                 }
                 if let Err(e) = suspend_account(db, sub.user_id).await {
@@ -159,7 +156,6 @@ pub async fn check_dunning_status(
 
 /// Restore an account after payment is recovered
 pub async fn restore_account(db: &PgPool, user_id: Uuid, plan: &str) -> Result<(), sqlx::Error> {
-    // Update user status
     sqlx::query(
         r#"
         UPDATE users SET
@@ -318,7 +314,6 @@ async fn downgrade_to_free(
     user_id: Uuid,
     previous_plan: &str,
 ) -> Result<(), sqlx::Error> {
-    // Update user to free tier
     sqlx::query(
         r#"
         UPDATE users SET
@@ -355,7 +350,6 @@ async fn suspend_account(db: &PgPool, user_id: Uuid) -> Result<(), sqlx::Error> 
     Ok(())
 }
 
-/// Clean up webhook events older than 30 days
 fn safe_hash(value: &str) -> String {
     let digest = Sha256::digest(value.as_bytes());
     digest
@@ -365,6 +359,7 @@ fn safe_hash(value: &str) -> String {
         .to_string()
 }
 
+/// Clean up webhook events older than 30 days
 pub async fn cleanup_webhook_events(db: &PgPool) -> Result<u64, sqlx::Error> {
     let result =
         sqlx::query("DELETE FROM webhook_events WHERE created_at < NOW() - INTERVAL '30 days'")

@@ -149,14 +149,12 @@ pub async fn create_portal_session(
     let mut tx = state.tenant_tx(user.id).await?;
     let mut service = BillingService::new(tx.connection(), stripe_client, state.stripe_config());
 
-    // Get or create Stripe customer
     let customer = service
         .get_or_create_stripe_customer(user.id, &user.email, None)
         .await?;
     service.release();
     tx.commit().await?;
 
-    // Create portal session
     let customer_id = stripe::CustomerId::from_str(&customer.stripe_customer_id)
         .map_err(|_| ApiError::Internal("Invalid customer ID".to_string()))?;
     let mut params = stripe::CreateBillingPortalSession::new(customer_id);
@@ -184,7 +182,6 @@ pub async fn create_checkout_session(
     let mut service = BillingService::new(tx.connection(), stripe_client, state.stripe_config());
     let config = state.stripe_config();
 
-    // Get plan and interval
     let plan = req
         .plan
         .ok_or_else(|| ApiError::BadRequest("Plan is required".to_string()))?;
@@ -192,7 +189,6 @@ pub async fn create_checkout_session(
         .interval
         .ok_or_else(|| ApiError::BadRequest("Interval is required".to_string()))?;
 
-    // Get price ID
     let price_id = match (plan, interval) {
         (PlanTier::Pro, BillingInterval::Month) => config.stripe_price_pro_monthly.clone(),
         (PlanTier::Pro, BillingInterval::Year) => config.stripe_price_pro_annual.clone(),
@@ -206,14 +202,12 @@ pub async fn create_checkout_session(
     }
     .ok_or_else(|| ApiError::Internal("Price not configured".to_string()))?;
 
-    // Get or create Stripe customer
     let customer = service
         .get_or_create_stripe_customer(user.id, &user.email, None)
         .await?;
     service.release();
     tx.commit().await?;
 
-    // Create checkout session
     let customer_id = stripe::CustomerId::from_str(&customer.stripe_customer_id)
         .map_err(|_| ApiError::Internal("Invalid customer ID".to_string()))?;
     let mut params = CreateCheckoutSession::new();

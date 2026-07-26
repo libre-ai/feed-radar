@@ -41,7 +41,6 @@ impl<'a> BillingService<'a> {
         email: &str,
         name: Option<&str>,
     ) -> ApiResult<StripeCustomer> {
-        // Check if customer already exists
         if let Some(customer) = self.get_stripe_customer_by_user(user_id).await? {
             return Ok(customer);
         }
@@ -62,7 +61,6 @@ impl<'a> BillingService<'a> {
             .await
             .map_err(|e| ApiError::Internal(format!("Failed to create Stripe customer: {}", e)))?;
 
-        // Store in database
         let customer = sqlx::query_as::<_, StripeCustomer>(
             r#"
             INSERT INTO stripe_customers (user_id, stripe_customer_id, email, name)
@@ -77,7 +75,6 @@ impl<'a> BillingService<'a> {
         .fetch_one(&mut *self.db)
         .await?;
 
-        // Log event
         self.log_billing_event(
             user_id,
             "customer.created",
@@ -137,12 +134,10 @@ impl<'a> BillingService<'a> {
         interval: BillingInterval,
         _payment_method_id: Option<String>,
     ) -> ApiResult<Subscription> {
-        // Ensure customer exists
         let customer = self
             .get_or_create_stripe_customer(user_id, email, name)
             .await?;
 
-        // Get price ID for plan/interval
         let price_id = self.get_price_id(plan, interval)?;
 
         // Create subscription in Stripe
@@ -163,15 +158,12 @@ impl<'a> BillingService<'a> {
             .await
             .map_err(|e| ApiError::Internal(format!("Failed to create subscription: {}", e)))?;
 
-        // Store subscription in database
         let sub = self
             .store_subscription(&customer, &stripe_sub, plan, interval)
             .await?;
 
-        // Update user tier
         self.update_user_tier(user_id, plan).await?;
 
-        // Log event
         self.log_billing_event(
             user_id,
             "subscription.created",
@@ -232,10 +224,8 @@ impl<'a> BillingService<'a> {
         .fetch_one(&mut *self.db)
         .await?;
 
-        // Update user tier
         self.update_user_tier(user_id, new_plan).await?;
 
-        // Log event
         self.log_billing_event(
             user_id,
             "subscription.updated",
@@ -289,12 +279,10 @@ impl<'a> BillingService<'a> {
             .fetch_one(&mut *self.db)
             .await?;
 
-            // Downgrade user to free
             self.update_user_tier(user_id, PlanTier::Free).await?;
 
             Ok(updated)
         } else {
-            // Cancel at period end
             let mut update_sub = stripe::UpdateSubscription::new();
             update_sub.cancel_at_period_end = Some(true);
 
@@ -357,7 +345,6 @@ impl<'a> BillingService<'a> {
         .fetch_one(&mut *self.db)
         .await?;
 
-        // Log event
         self.log_billing_event(
             user_id,
             "subscription.reactivated",
@@ -448,7 +435,6 @@ impl<'a> BillingService<'a> {
             )
         };
 
-        // Sum usage in current period
         let usage: (Option<i64>, Option<i64>) = sqlx::query_as(
             r#"
             SELECT COALESCE(SUM(ai_tokens), 0), COALESCE(SUM(api_calls), 0)
@@ -599,7 +585,6 @@ impl<'a> BillingService<'a> {
         .await
         .map_err(|e| ApiError::Internal(format!("Failed to attach payment method: {}", e)))?;
 
-        // Get payment method details from Stripe
         let pm = stripe::PaymentMethod::retrieve(self.stripe, &pm_id, &[])
             .await
             .map_err(|e| ApiError::Internal(format!("Failed to retrieve payment method: {}", e)))?;
@@ -641,7 +626,6 @@ impl<'a> BillingService<'a> {
             })?;
         }
 
-        // Store in database
         let method = sqlx::query_as::<_, PaymentMethod>(
             r#"
             INSERT INTO payment_methods (user_id, stripe_customer_id, stripe_payment_method_id, card_brand, card_last4, card_exp_month, card_exp_year, is_default)
@@ -677,12 +661,10 @@ impl<'a> BillingService<'a> {
         let pm_id = stripe::PaymentMethodId::from_str(&method.stripe_payment_method_id)
             .map_err(|_| ApiError::Internal("Invalid payment method ID".to_string()))?;
 
-        // Detach from Stripe
         stripe::PaymentMethod::detach(self.stripe, &pm_id)
             .await
             .map_err(|e| ApiError::Internal(format!("Failed to detach payment method: {}", e)))?;
 
-        // Delete from database
         sqlx::query("DELETE FROM payment_methods WHERE id = $1")
             .bind(method_id)
             .execute(&mut *self.db)
@@ -729,7 +711,6 @@ impl<'a> BillingService<'a> {
         .await
         .map_err(|e| ApiError::Internal(format!("Failed to set default payment method: {}", e)))?;
 
-        // Update in database
         sqlx::query("UPDATE payment_methods SET is_default = FALSE WHERE user_id = $1")
             .bind(user_id)
             .execute(&mut *self.db)
@@ -777,7 +758,6 @@ impl<'a> BillingService<'a> {
         let now = Utc::now();
         let day = now.day();
 
-        // If day > 28, normalize to 1st of next month
         if day > 28 {
             let next_month = if now.month() == 12 {
                 now.with_month(1)
