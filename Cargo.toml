@@ -8,7 +8,6 @@ members = [
     "crates/rules",
     "crates/sync",
     "crates/storage",
-    "crates/core",
     "crates/api",
     "crates/worker",
     "crates/cli",
@@ -28,7 +27,6 @@ tokio = { version = "1.43", features = ["full"] }
 
 # Web framework
 axum = { version = "0.8", features = ["macros"] }
-tower = "0.5"
 tower-http = { version = "0.7", features = ["cors", "trace", "compression-gzip"] }
 
 # Database
@@ -40,9 +38,6 @@ serde_json = "1.0"
 
 # RSS/Atom parsing
 feed-rs = "2.3"
-
-# HTML parsing
-scraper = "0.27.0"
 
 # HTTP client
 reqwest = { version = "0.13", features = ["json", "gzip"] }
@@ -83,7 +78,6 @@ aes-gcm = "0.11"
 rand = "0.10"
 hkdf = "0.13"
 sha2 = "0.11"
-digest = "0.11"
 base64 = "0.22"
 
 # Regex
@@ -104,7 +98,6 @@ feedmind-opml = { version = "0.1.0", path = "crates/opml" }
 feedmind-rules = { version = "0.1.0", path = "crates/rules" }
 feedmind-sync = { version = "0.1.0", path = "crates/sync" }
 feedmind-storage = { version = "0.1.0", path = "crates/storage" }
-feedmind-core = { version = "0.1.0", path = "crates/core" }
 
 [profile.release]
 lto = true

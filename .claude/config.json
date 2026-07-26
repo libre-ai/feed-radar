@@ -32,7 +32,6 @@
   },
 
   "paths": {
-    "rust_core": "crates/core/src",
     "rust_api": "crates/api/src",
     "rust_worker": "crates/worker/src",
     "frontend_src": "apps/web/src",

@@ -9,7 +9,7 @@ Radar is explainable feed selection and portable curation: subscribe to RSS, Ato
 ## Scope / Non-scope
 
 - **Reserved home.** This repository is the public reserved home of Radar. The product is being rebuilt in the canonical base repository [`libre-ai/libre-ai`](https://github.com/libre-ai/libre-ai) (multi-repo topology, [ADR-0008](https://github.com/libre-ai/libre-ai/blob/main/docs/adr/0008-multi-repo-target-topology-and-brand.md)); it reopens as the real product repository when the owner activates it (wave 4).
-- The legacy implementation carried here is **frozen for reference**: the Rust workspace (`crates/{crypto,domain,ingest,opml,rules,sync,storage,core,api,worker,cli}` and `surfaces/ui`), the PostgreSQL migrations and their security manifest, the Playwright e2e suite, and the `examples/` corpus.
+- The legacy implementation carried here is **frozen for reference**: the Rust workspace (`crates/{crypto,domain,ingest,opml,rules,sync,storage,api,worker,cli}` and `surfaces/ui`), the PostgreSQL migrations and their security manifest, the Playwright e2e suite, and the `examples/` corpus.
 - **Non-scope: new product development in this repository until activation.** Work on the parser, rule engine, contracts and product host happens in the base repository.
 - `rumble-feed-mind` and the `feedmind-*` crate names are a retired brand and historical package identifiers. They survive in `Cargo.toml`, crate names and script names because renaming frozen code buys nothing — they are not the product name.
 
@@ -30,19 +30,21 @@ These rules governed the implementation carried here. They are recorded because 
 
 Verified against `Cargo.toml`, `e2e/package.json`, `deny.toml` and `scripts/`. No CI workflow in this repository runs them — see **CI gates**.
 
-- Rust workspace: `cargo test --workspace` (twelve members: `crates/crypto`, `crates/domain`, `crates/ingest`, `crates/opml`, `crates/rules`, `crates/sync`, `crates/storage`, `crates/core`, `crates/api`, `crates/worker`, `crates/cli`, `surfaces/ui`).
+- Rust workspace: `cargo test --workspace` (eleven members: `crates/crypto`, `crates/domain`, `crates/ingest`, `crates/opml`, `crates/rules`, `crates/sync`, `crates/storage`, `crates/api`, `crates/worker`, `crates/cli`, `surfaces/ui`).
 - Format and check: `cargo fmt --all --check`, `cargo check`.
 - Lint: `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
 - Dependency policy: `cargo deny check` (`deny.toml`).
 - e2e (from `e2e/`): `npm run test` (Playwright).
-- Scripts in `scripts/`: `build-feedmind-app.sh`, `verify-feedmind-app.sh`, `generate-live-radar-proof.sh`, `verify-design-system.py`, and the PostgreSQL role fixtures under `scripts/postgres/`.
+- Scripts in `scripts/`: `build-feedmind-app.sh`, `verify-feedmind-app.sh`, `generate-live-radar-proof.sh`, `verify-design-system.py`, `dead-code-gate.sh`, and the PostgreSQL role fixtures under `scripts/postgres/`.
 
 ## CI gates
 
-The legacy product CI (Rust, security, contracts, release) was retired from this reserved shell. Two workflows remain and run on every pull request:
+The legacy product CI (Rust, security, contracts, release) was retired from this reserved shell. Four workflows remain and run on every pull request; none of them compiles the workspace:
 
 - `Context hygiene` (`.github/workflows/context-hygiene.yml`) — blocks private identifiers and machine-local paths from entering the public tree.
 - `db-inspection` (`.github/workflows/db-inspection.yml`) — fail-closed inspection of `migrations/` against `db-security-manifest.json`.
+- `Licensing` (`.github/workflows/licensing.yml`) — REUSE compliance against the per-path mapping in `REUSE.toml`.
+- `Dead code` (`.github/workflows/dead-code.yml`) — fails when a workspace member, a `[workspace.dependencies]` entry or a module file becomes unreachable (`scripts/dead-code-gate.sh`).
 
 ## Links
 
