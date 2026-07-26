@@ -90,7 +90,11 @@ binaries="$(grep -c '^test result:' "$log" || true)"
 # and `--nocapture` lets two writes land on one line ("... okskipping live
 # probe: ..."), so counting LINES silently undercounts the skips. Counting
 # occurrences is the point of the number.
-skipped_db="$(grep -o 'skipping [^:]*: FEED_RADAR_TEST_DATABASE_URL is not set' "$log" | wc -l | tr -d '[:space:]')"
+# The `|| true` sits INSIDE the pipeline, not after it. Under `pipefail` a
+# `grep` that matches nothing exits 1 and takes the whole script down with it —
+# and "matches nothing" is the expected state the day someone does provision a
+# database, i.e. exactly the case this gate must survive.
+skipped_db="$({ grep -o 'skipping [^:]*: FEED_RADAR_TEST_DATABASE_URL is not set' "$log" || true; } | wc -l | tr -d '[:space:]')"
 
 echo "   test binaries executed: ${binaries}"
 echo "   assertions passed:      ${passed}"
