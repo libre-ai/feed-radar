@@ -20,9 +20,9 @@ name: JWT crypto provider
 #      is the step that proves the chosen provider actually works rather than
 #      merely being present.
 #
-# NOTE FOR THE REPOSITORY OWNER: this job is NOT enforcing until its name,
-# "JWT signs and verifies", is added to the branch-protection required checks.
-# Until then it reports without blocking.
+# This job IS enforcing: its name, "JWT signs and verifies", is one of the
+# branch-protection required checks on `main`. Renaming the job silently drops
+# that requirement.
 #
 # Unlike the other workflows kept in this reserved shell, this one compiles a
 # crate. That is the point: the defect it guards is invisible to every check

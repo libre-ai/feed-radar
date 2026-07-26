@@ -28,29 +28,34 @@ These rules governed the implementation carried here. They are recorded because 
 
 ## Commands
 
-Verified against `Cargo.toml`, `e2e/package.json`, `deny.toml` and `scripts/`. With one exception, no CI workflow in this repository runs them: `JWT crypto provider` runs the auth-boundary tests and `scripts/jwt-crypto-provider-gate.sh` — see **CI gates**.
+Verified against `Cargo.toml`, `e2e/package.json`, `deny.toml` and `scripts/`. Most of them now run in CI — see **CI gates**. The exceptions, run by no workflow, are `cargo fmt`, `cargo clippy` and the Playwright e2e suite.
 
-- Rust workspace: `cargo test --workspace` (eleven members: `crates/crypto`, `crates/domain`, `crates/ingest`, `crates/opml`, `crates/rules`, `crates/sync`, `crates/storage`, `crates/api`, `crates/worker`, `crates/cli`, `surfaces/ui`).
+- Rust workspace: `cargo test --workspace --all-targets --all-features` (eleven members: `crates/crypto`, `crates/domain`, `crates/ingest`, `crates/opml`, `crates/rules`, `crates/sync`, `crates/storage`, `crates/api`, `crates/worker`, `crates/cli`, `surfaces/ui`). Run in CI by `scripts/workspace-test-gate.sh`. Tests needing a live PostgreSQL return early unless `FEED_RADAR_TEST_DATABASE_URL` is set; the API live probes additionally require `FEED_RADAR_TEST_REDIS_URL` once it is.
 - Format and check: `cargo fmt --all --check`, `cargo check`.
 - Lint: `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
-- Dependency policy: `cargo deny check` (`deny.toml`).
+- Dependency policy, deterministic half: `cargo deny check bans licenses sources` (`deny.toml`), run in CI by `scripts/dependency-policy-gate.sh`.
+- Dependency policy, volatile half: `cargo deny --all-features check advisories` and `cargo audit` (`.cargo/audit.toml`). Both read databases that change without this repository changing, so they run in a non-required job.
 - e2e (from `e2e/`): `npm run test` (Playwright).
-- Scripts in `scripts/`: `build-feedmind-app.sh`, `verify-feedmind-app.sh`, `generate-live-radar-proof.sh`, `verify-design-system.py`, `dead-code-gate.sh`, `comment-hygiene-gate.sh`, `advisory-waiver-gate.sh`, and the PostgreSQL role fixtures under `scripts/postgres/`.
+- Scripts in `scripts/`: `build-feedmind-app.sh`, `verify-feedmind-app.sh`, `generate-live-radar-proof.sh`, `verify-design-system.py`, `dead-code-gate.sh`, `comment-hygiene-gate.sh`, `advisory-waiver-gate.sh`, `jwt-crypto-provider-gate.sh`, `workspace-test-gate.sh`, `dependency-policy-gate.sh`, and the PostgreSQL role fixtures under `scripts/postgres/`.
 
 ## CI gates
 
-The legacy product CI (Rust, security, contracts, release) was retired from this reserved shell. Five workflows remain and run on every pull request. The first four never compile the workspace:
+The legacy product CI (Rust, security, contracts, release) was retired from this reserved shell. Seven workflows remain and run on every pull request. The first four never compile the workspace:
 
 - `Context hygiene` (`.github/workflows/context-hygiene.yml`) — blocks private identifiers and machine-local paths from entering the public tree.
 - `db-inspection` (`.github/workflows/db-inspection.yml`) — fail-closed inspection of `migrations/` against `db-security-manifest.json`.
 - `Licensing` (`.github/workflows/licensing.yml`) — REUSE compliance against the per-path mapping in `REUSE.toml`.
 - `Dead code` (`.github/workflows/dead-code.yml`) — fails when a workspace member, a `[workspace.dependencies]` entry or a module file becomes unreachable (`scripts/dead-code-gate.sh`); the same job also fails on commented-out code and on a `TODO`/`FIXME`/`HACK` carrying no scope, issue or document reference (`scripts/comment-hygiene-gate.sh`), and on an advisory waiver in `.cargo/audit.toml` or `deny.toml` that carries no expiry date, no reference, a date beyond the review horizon, a date that disagrees between the two files, or a date already passed (`scripts/advisory-waiver-gate.sh`). The three scripts share this job so each inherits its branch-protection requirement.
 
-The fifth **does** compile, deliberately — it guards a defect class that is invisible to every check stopping at manifests:
+The remaining three **do** compile, or read a dependency graph, deliberately:
 
-- `JWT crypto provider` (`.github/workflows/jwt-crypto-provider.yml`), job name `JWT signs and verifies` — `jsonwebtoken` 10.x selects its crypto backend from crate features and panics at the first sign or verify when the feature set names none, or both. `cargo check`, `cargo clippy` and `cargo build` are all green on a binary that aborts on its first login. The job runs `scripts/jwt-crypto-provider-gate.sh` (graph-only: exactly one provider must reach `cargo tree --edges normal`, so a provider parked in `[dev-dependencies]` cannot satisfy it) and then the `routes::auth::tests` round trip, which signs and verifies a real token.
+- `JWT crypto provider` (`.github/workflows/jwt-crypto-provider.yml`), job name `JWT signs and verifies` — `jsonwebtoken` 10.x selects its crypto backend from crate features and panics at the first sign or verify when the feature set names none, or both. `cargo check`, `cargo clippy` and `cargo build` are all green on a binary that aborts on its first login. The job runs `scripts/jwt-crypto-provider-gate.sh` (graph-only: exactly one provider must reach `cargo tree --edges normal`, so a provider parked in `[dev-dependencies]` cannot satisfy it) and then the `routes::auth::tests` round trip, which signs and verifies a real token. It stays narrow on purpose and is **not** the workspace suite.
+- `Workspace tests` (`.github/workflows/workspace-tests.yml`), job name `Workspace tests pass` — runs `scripts/workspace-test-gate.sh`, i.e. `cargo test --workspace --all-targets --all-features` over all eleven members. It fails on any test failure, and also when the suite executes no assertion at all. It does **not** provision PostgreSQL or Redis: the database-dependent tests return early, and the gate prints how many did so, so the green mark never implies coverage it lacks.
+- `Dependency policy` (`.github/workflows/dependency-policy.yml`) — two jobs split along whether a verdict can change without a commit. `Dependency policy holds` runs `scripts/dependency-policy-gate.sh` (`cargo deny check bans licenses sources`, `--locked --disable-fetch`), a pure function of the committed tree, and is safe to require. `Advisory report` runs `cargo deny --all-features check advisories` and `cargo audit`; both read databases that upstream changes without this repository changing, so that job **must never be a required check**. Both scanners are pinned by version and SHA-256.
 
-It is kept as its own workflow rather than folded into `Dead code`: that job is a seconds-long manifest gate, and a check named for unreachable code must not fail because a crate stopped compiling.
+Each is its own workflow rather than a step folded into another: a check must be named for what it covers. `Dead code` is a seconds-long manifest gate, and a check named for unreachable code must not fail because a crate stopped compiling, a test regressed or a licence drifted.
+
+Required checks on `main` are the five names `No private identifiers or machine-local paths`, `REUSE compliance`, `Database inspection gate`, `No unreachable workspace code` and `JWT signs and verifies`. `Workspace tests pass` and `Dependency policy holds` are intended to join them and are not enforcing until they do.
 
 ## Links
 
