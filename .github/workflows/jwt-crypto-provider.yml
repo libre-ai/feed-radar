@@ -54,5 +54,8 @@ jobs:
       - name: Provider reaches the production build (fail closed)
         run: scripts/jwt-crypto-provider-gate.sh
 
+      # Block scalar, not a plain one: the module filter ends in `::`, and a
+      # trailing colon makes YAML read the value as a mapping key.
       - name: Sign and verify a real session token (fail closed)
-        run: cargo test -p feedmind-api --bin feedmind-api routes::auth::
+        run: |
+          cargo test -p feedmind-api --bin feedmind-api routes::auth::tests
