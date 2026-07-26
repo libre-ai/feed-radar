@@ -8,6 +8,34 @@ use crate::error::ApiError;
 use crate::routes::auth::Claims;
 use crate::state::AppState;
 
+/// Verify a session token and return its claims.
+///
+/// This is the whole cryptographic verification side of the auth boundary,
+/// lifted out of the extractor so it can be exercised without a database. The
+/// extractor below is its only production caller and adds no crypto of its own.
+///
+/// `Validation::default()` accepts `HS256` alone, and `jsonwebtoken` compares
+/// the token header against that list *before* it builds a verifier, so a token
+/// announcing any other algorithm is refused without reaching a signature
+/// implementation.
+pub(crate) fn decode_session_claims(token: &str, secret: &str) -> Result<Claims, ApiError> {
+    decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    )
+    .map(|token_data| token_data.claims)
+    .map_err(|e| match e.kind() {
+        jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+            ApiError::Unauthorized("Token expired".to_string())
+        }
+        jsonwebtoken::errors::ErrorKind::InvalidToken => {
+            ApiError::Unauthorized("Invalid token".to_string())
+        }
+        _ => ApiError::Unauthorized(format!("Token validation failed: {}", e)),
+    })
+}
+
 /// Account status for request authorization checks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "account_status", rename_all = "snake_case")]
@@ -53,22 +81,7 @@ impl FromRequestParts<AppState> for CurrentUser {
         })?;
 
         // Decode and validate JWT
-        let token_data = decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(state.jwt_secret().as_bytes()),
-            &Validation::default(),
-        )
-        .map_err(|e| match e.kind() {
-            jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
-                ApiError::Unauthorized("Token expired".to_string())
-            }
-            jsonwebtoken::errors::ErrorKind::InvalidToken => {
-                ApiError::Unauthorized("Invalid token".to_string())
-            }
-            _ => ApiError::Unauthorized(format!("Token validation failed: {}", e)),
-        })?;
-
-        let claims = token_data.claims;
+        let claims = decode_session_claims(token, state.jwt_secret())?;
 
         let user_id = Uuid::parse_str(&claims.sub)
             .map_err(|_| ApiError::Unauthorized("Invalid user ID in token".to_string()))?;

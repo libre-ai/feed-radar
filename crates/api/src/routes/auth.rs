@@ -307,6 +307,128 @@ pub fn router() -> Router<AppState> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::extractors::auth::decode_session_claims;
+
+    const TEST_SECRET: &str = "test-secret-for-jwt-round-trip-proof";
+
+    fn probe_user() -> UserRow {
+        UserRow {
+            id: Uuid::nil(),
+            email: "round-trip@example.test".to_string(),
+            password_hash: "unused-by-token-minting".to_string(),
+            display_name: Some("Round Trip".to_string()),
+            tier: "pro".to_string(),
+        }
+    }
+
+    /// Signs with the production minting function and verifies with the
+    /// production verification function.
+    ///
+    /// `jsonwebtoken` 10.x resolves its crypto backend from crate features and
+    /// panics on the first sign *or* verify when none is enabled, so this test
+    /// is the guard for that backend being wired into the production build.
+    /// Without the provider it aborts; with it, it passes. Nothing here touches
+    /// the database, so it runs on every machine and in CI rather than skipping.
+    #[test]
+    fn session_token_signs_and_verifies_round_trip() {
+        let user = probe_user();
+
+        let (token, expires_at) =
+            generate_jwt(&user, TEST_SECRET, 3600).expect("minting a session token must succeed");
+
+        let claims =
+            decode_session_claims(&token, TEST_SECRET).expect("a freshly minted token must verify");
+
+        assert_eq!(claims.sub, user.id.to_string());
+        assert_eq!(claims.email, user.email);
+        assert_eq!(claims.tier, user.tier);
+        assert_eq!(claims.exp, expires_at.timestamp());
+        assert!(claims.exp > claims.iat);
+    }
+
+    #[test]
+    fn session_token_is_refused_under_a_different_secret() {
+        let (token, _) = generate_jwt(&probe_user(), TEST_SECRET, 3600).expect("mint");
+
+        let rejection = decode_session_claims(&token, "a-completely-different-secret")
+            .expect_err("a token signed with another secret must not verify");
+
+        assert!(matches!(rejection, ApiError::Unauthorized(_)));
+    }
+
+    #[test]
+    fn tampered_payload_is_refused() {
+        let (token, _) = generate_jwt(&probe_user(), TEST_SECRET, 3600).expect("mint");
+
+        let mut parts = token.split('.');
+        let header = parts.next().expect("header segment");
+        let signature = parts.next_back().expect("signature segment");
+        let forged_claims = Claims {
+            sub: Uuid::new_v4().to_string(),
+            email: "attacker@example.test".to_string(),
+            tier: "team".to_string(),
+            exp: (Utc::now() + Duration::seconds(3600)).timestamp(),
+            iat: Utc::now().timestamp(),
+        };
+        let forged_payload = base64::Engine::encode(
+            &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+            serde_json::to_vec(&forged_claims).expect("serialize forged claims"),
+        );
+        let forged = format!("{header}.{forged_payload}.{signature}");
+
+        let rejection = decode_session_claims(&forged, TEST_SECRET)
+            .expect_err("a re-written payload must not verify under the original signature");
+
+        assert!(matches!(rejection, ApiError::Unauthorized(_)));
+    }
+
+    /// The verification side pins `HS256`, and `jsonwebtoken` checks the header
+    /// algorithm against that list before it constructs a verifier, so a token
+    /// announcing another algorithm is refused without reaching a signature
+    /// implementation at all. This pins the `alg` confusion boundary: it must
+    /// keep holding whichever crypto provider the workspace carries.
+    #[test]
+    fn token_announcing_another_algorithm_is_refused() {
+        let (token, _) = generate_jwt(&probe_user(), TEST_SECRET, 3600).expect("mint");
+
+        let mut parts = token.split('.');
+        let _ = parts.next();
+        let payload = parts.next().expect("payload segment");
+        let signature = parts.next().expect("signature segment");
+        let rs256_header = base64::Engine::encode(
+            &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+            br#"{"typ":"JWT","alg":"RS256"}"#,
+        );
+        let forged = format!("{rs256_header}.{payload}.{signature}");
+
+        let rejection = decode_session_claims(&forged, TEST_SECRET)
+            .expect_err("a token announcing RS256 must be refused");
+
+        assert!(matches!(rejection, ApiError::Unauthorized(_)));
+    }
+
+    #[test]
+    fn expired_token_is_refused() {
+        // Past `exp` by well over the 60s leeway `Validation` allows by default.
+        let claims = Claims {
+            sub: Uuid::nil().to_string(),
+            email: "round-trip@example.test".to_string(),
+            tier: "pro".to_string(),
+            exp: (Utc::now() - Duration::seconds(3600)).timestamp(),
+            iat: (Utc::now() - Duration::seconds(7200)).timestamp(),
+        };
+        let stale = encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(TEST_SECRET.as_bytes()),
+        )
+        .expect("minting a stale token must succeed");
+
+        let rejection = decode_session_claims(&stale, TEST_SECRET)
+            .expect_err("an expired token must not verify");
+
+        assert!(matches!(rejection, ApiError::Unauthorized(_)));
+    }
 
     #[test]
     fn jwt_session_tokens_never_authorize_harness_delegation() {

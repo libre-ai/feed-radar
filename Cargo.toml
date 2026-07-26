@@ -74,7 +74,18 @@ argon2 = "0.5"
 password-hash = { version = "0.5", features = ["getrandom"] }
 
 # JWT
-jsonwebtoken = "10.3"
+# `jsonwebtoken` 10.x resolves no crypto backend on its own: `sign` and `verify`
+# both go through `CryptoProvider::get_default()`, which panics when neither the
+# `rust_crypto` nor the `aws_lc_rs` feature is enabled. The feature is declared
+# here, on the workspace dependency, so every member inherits a usable backend
+# rather than compiling cleanly and aborting on the first token.
+# `aws_lc_rs` is the retained backend (docs/adr/0005): `aws-lc-rs` is already
+# compiled in this graph through `rustls`, so it adds no crate and no advisory,
+# where `rust_crypto` would have pulled `rsa` and its unpatched RUSTSEC-2023-0071.
+# Exactly one provider may be enabled: the crate matches on
+# `all(feature = "aws_lc_rs", not(feature = "rust_crypto"))` and its mirror, so
+# enabling both falls through to the same panic as enabling neither.
+jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
 
 # Encryption (for API keys)
 aes-gcm = "0.11"
