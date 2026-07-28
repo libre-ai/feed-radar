@@ -85,7 +85,7 @@ password-hash = { version = "0.5", features = ["getrandom"] }
 # Exactly one provider may be enabled: the crate matches on
 # `all(feature = "aws_lc_rs", not(feature = "rust_crypto"))` and its mirror, so
 # enabling both falls through to the same panic as enabling neither.
-jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
+jsonwebtoken = { version = "11.0", features = ["aws_lc_rs"] }
 
 # Encryption (for API keys)
 aes-gcm = "0.11"
