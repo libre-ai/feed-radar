@@ -1,0 +1,23 @@
+name: Context hygiene
+
+# Blocks private identifiers and machine-local paths from entering the public
+# tree. Deny patterns are stored base64-encoded so this workflow never carries
+# them in human-readable form (obfuscation, not encryption: the goal is zero
+# readable mention, plus grep-proof compliance of the tree). Text files only
+# (-I): identifiers embedded in binary evidence would escape these checks.
+# Exemptions: lines carrying the 'allow-local-path' marker, and SHA-sealed
+# Gate A evidence reports (immutable records, digest-verified by
+# check:notebook-core-v2 in the required Bun quality job) — exempted file by
+# file, never whole directories.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  context-hygiene:
+    uses: libre-ai/governance/.github/workflows/reusable-context-hygiene.yml@9cec3d575ca1af5af5ede4ca694eea84129c9f5e

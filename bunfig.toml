@@ -1,0 +1,7 @@
+[install]
+linker = "isolated"
+minimumReleaseAge = 259200
+minimumReleaseAgeExcludes = []
+
+[test]
+root = "."

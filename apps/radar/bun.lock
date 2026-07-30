@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@libre-ai/radar",
+      "dependencies": {
+        "@libre-ai/policy-core-ref": "github:libre-ai/policy#56c2de94cb9f7b6916b07b1cd9a20eba0b1f7fb1",
+      },
+    },
+  },
+  "packages": {
+    "@libre-ai/policy-core-ref": ["@libre-ai/policy-gates@github:libre-ai/policy#56c2de9", {}, "libre-ai-policy-56c2de9", "sha512-QhN/Hc40MJ9Ifa0TXztM+of3+r05QgsxyBy86GlM61Apz3l1kMe9UrUw13o4rLnzGFkKEQtTR+XGqdvB1Nu2hg=="],
+  }
+}

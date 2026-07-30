@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 
 import { evaluateRules } from "./rule-evaluator";
 
-const repoRoot = resolve(import.meta.dir, "../../../..");
+const repoRoot = resolve(
+  import.meta.dir,
+  "../../../../node_modules/@libre-ai/contracts-authority",
+);
 const fixtureRoot = resolve(repoRoot, "contracts/fixtures/radar-engine-v2");
 
 function readBytes(relPath: string): Uint8Array {

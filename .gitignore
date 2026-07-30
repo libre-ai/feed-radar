@@ -1,0 +1,30 @@
+# Bun / TypeScript
+node_modules/
+dist/
+coverage/
+bun-error.log
+
+# Rust
+target/
+
+# Toolchains and caches
+.tools/
+.cache/
+
+# Tests
+playwright-report/
+test-results/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log

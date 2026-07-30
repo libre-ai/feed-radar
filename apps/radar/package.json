@@ -13,6 +13,6 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@libre-ai/policy-core-ref": "workspace:*"
+    "@libre-ai/policy-core-ref": "github:libre-ai/policy#56c2de94cb9f7b6916b07b1cd9a20eba0b1f7fb1"
   }
 }
