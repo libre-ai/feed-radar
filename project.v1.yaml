@@ -1,0 +1,91 @@
+# Fiche d'état du projet — autorité de l'état depuis ADR-0020 (design §6.2).
+# La section statut du README est générée depuis cette fiche (sentinelles),
+# jamais éditée à la main ; l'avancement est calculé, jamais déclaré.
+schema_version: libre-ai.project.v1
+project: radar
+repository: libre-ai/feed-radar
+kind: product
+layer: couche-1
+statement:
+  for: "les personnes qui suivent beaucoup de sources d'information"
+  who_faces: "des fils d'actualité ingérables et des algorithmes de recommandation opaques"
+  enables: "transformer ses abonnements en sélections lisibles dont chaque choix est justifié"
+  producing:
+    - "des exports curés où chaque sélection est expliquée par une règle lisible"
+  without_depending_on:
+    - "aucun algorithme opaque, aucune donnée hors de sa machine"
+summary: "Intelligence de flux locale : OPML, RSS, Atom et JSON Feed vers des exports curés explicables (couche 1)."
+current_situation: >-
+  L'évaluateur de règles (vérifié byte-exact contre la référence policy-core) et la politique de destinations sont greffés et verts ; la surface produit complète (imports, interface, exports de bout en bout) reste à construire.
+scope:
+  - "ingestion OPML, RSS, Atom, JSON Feed"
+  - "règles de curation lisibles et explicables"
+  - "exports curés vérifiables"
+non_goals:
+  - "recommandation opaque"
+  - "hébergement des données hors de la machine de l'utilisateur"
+dependencies:
+  - on: libre-ai/policy
+    why: "implémentation de référence policy-core-ref (JCS, digest)"
+    pinned: "git-dep épinglée par SHA dans le manifest de ce repo"
+  - on: libre-ai/contracts
+    why: "autorité des contrats et golden vectors"
+    pinned: "git-dep épinglée par SHA dans le manifest de ce repo"
+  - on: libre-ai/governance
+    why: "gabarit de flotte et gates de qualité"
+    pinned: "git-dep épinglée par SHA dans le manifest de ce repo"
+maturity: specified
+confidence: medium
+exposure: spec-published
+freshness:
+  last_verified_on: "2026-07-30"
+hypothesis: >
+  A sovereign feed reader with deterministic rule replay and explainable
+  curation reaches Inoreader-class daily utility without a full-text
+  archive and without cross-tenant analytics.
+evidence_required:
+  - parity audit against the 105-trait Inoreader map (docs/parity/audits/PARITY-radar-inoreader.md)
+  - deterministic replay demonstrated on versioned rules (ReplayRuleSet)
+  - provenance metadata present on every export
+promotion_criteria:
+  - to: usable-verifiable
+    when: covered traits >= 70 of 105 and the 38 ABSENT-T1 traits each resolved (shipped or owner-rejected with rationale)
+  - to: proven
+    when: covered traits >= 90 of 105 across two consecutive parity audits
+kill_predicates:
+  - id: parity-stagnation
+    predicate: covered_traits < 50 of 105
+    window: two consecutive parity audits after wave-4 activation
+    source: docs/parity/audits/PARITY-radar-inoreader.md
+  - id: sovereignty-breach
+    predicate: any of the 15 CONFLIT traits (full-text archive, cross-tenant analytics) enters the covered set
+    source: docs/parity/audits/PARITY-radar-inoreader.md
+benchmark:
+  product: Inoreader
+  url: https://www.inoreader.com
+scope_stability: stable
+phases:
+  - id: activation
+    title: Activation multi-repo (γ 3.5)
+    exit_criteria:
+      - id: graft-green
+        text: Contenu greffé depuis le hub avec son histoire, workspace autonome vert en CI réelle, description dégelée.
+        weight: 2
+        status: accepted
+        evidence:
+          date: "2026-07-30"
+          reference: "gate-acceptance-log 2026-07-30 (ligne 3.5), PR hub #286"
+  - id: product-surface
+    title: Surface produit complète
+    exit_criteria:
+      - id: product-surface-done
+        text: L'application couvre imports OPML/RSS/Atom/JSON Feed et exports curés de bout en bout, parcours e2e verts.
+        weight: 4
+        status: pending
+  - id: exposure
+    title: Exposition vérifiable
+    exit_criteria:
+      - id: promotion-met
+        text: Les conditions de promotion vers usable-verifiable déclarées par cette fiche (promotion_criteria) sont réunies et vérifiées.
+        weight: 4
+        status: pending
