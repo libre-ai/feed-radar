@@ -26,5 +26,8 @@ test-results/
 .vscode/
 *.swp
 
+# Agent-context configuration (never versioned — machine-local settings)
+.claude/
+
 # Logs
 *.log
