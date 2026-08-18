@@ -1,6 +1,6 @@
 # Radar
 
-Intelligence de flux locale : OPML, RSS, Atom et JSON Feed vers des exports curés explicables (couche 1).
+Intelligence de flux locale : OPML, RSS 2.0 et Atom 1.0 vers des exports curés explicables (couche 1).
 
 Pour les personnes qui suivent beaucoup de sources d'information, qui rencontre des fils d'actualité ingérables et des algorithmes de recommandation opaques, ce projet permet de transformer ses abonnements en sélections lisibles dont chaque choix est justifié, en produisant des exports curés où chaque sélection est expliquée par une règle lisible, sans dépendre de : aucun algorithme opaque, aucune donnée hors de sa machine.
 
@@ -13,8 +13,8 @@ Pour les personnes qui suivent beaucoup de sources d'information, qui rencontre 
 - Maturité : specified
 - Exposition : spec-published
 - Confiance : medium
-- Preuves vérifiées le : 2026-07-30
-- Avancement : 20 % du périmètre actuellement déclaré
+- Preuves vérifiées le : 2026-08-18
+- Avancement : 0 % du périmètre actuellement déclaré
 
 <!-- libre-ai:project-status:end -->
 

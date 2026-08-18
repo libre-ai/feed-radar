@@ -14,16 +14,17 @@ statement:
     - "des exports curés où chaque sélection est expliquée par une règle lisible"
   without_depending_on:
     - "aucun algorithme opaque, aucune donnée hors de sa machine"
-summary: "Intelligence de flux locale : OPML, RSS, Atom et JSON Feed vers des exports curés explicables (couche 1)."
+summary: "Intelligence de flux locale : OPML, RSS 2.0 et Atom 1.0 vers des exports curés explicables (couche 1)."
 current_situation: >-
   L'évaluateur de règles (vérifié byte-exact contre la référence policy-core) et la politique de destinations sont greffés et verts ; la surface produit complète (imports, interface, exports de bout en bout) reste à construire.
 scope:
-  - "ingestion OPML, RSS, Atom, JSON Feed"
+  - "ingestion OPML, RSS 2.0, Atom 1.0"
   - "règles de curation lisibles et explicables"
   - "exports curés vérifiables"
 non_goals:
   - "recommandation opaque"
   - "hébergement des données hors de la machine de l'utilisateur"
+  - "ingestion JSON Feed en v1 (hors périmètre ; réévaluée après la Phase C, cf. docs/apps/radar.md)"
 dependencies:
   - on: libre-ai/policy
     why: "implémentation de référence policy-core-ref (JCS, digest)"
@@ -38,24 +39,25 @@ maturity: specified
 confidence: medium
 exposure: spec-published
 freshness:
-  last_verified_on: "2026-07-30"
+  last_verified_on: "2026-08-18"
 hypothesis: >
   A sovereign feed reader with deterministic rule replay and explainable
   curation reaches Inoreader-class daily utility without a full-text
   archive and without cross-tenant analytics.
 evidence_required:
-  - parity audit against the 105-trait Inoreader map (docs/parity/audits/PARITY-radar-inoreader.md)
+  - parity audit against the 105-trait Inoreader map, re-executed against shipped code rather than spec (docs/parity/audits/PARITY-radar-inoreader.md, Phase D)
+  - the L4 hypothesis (radar-deterministic-curation-precision) observed over four real cycles
   - deterministic replay demonstrated on versioned rules (ReplayRuleSet)
   - provenance metadata present on every export
 promotion_criteria:
   - to: usable-verifiable
-    when: covered traits >= 70 of 105 and the 38 ABSENT-T1 traits each resolved (shipped or owner-rejected with rationale)
+    when: "the L4 hypothesis (radar-deterministic-curation-precision) is validated over four real cycles — at least 70% of retained items judged relevant and zero relevant item missed in the hand-reviewed control sample — and the Phase D parity audit confirms the 32 T1-core traits covered against shipped code, not spec (docs/parity/audits/PARITY-radar-inoreader.md)"
   - to: proven
     when: covered traits >= 90 of 105 across two consecutive parity audits
 kill_predicates:
   - id: parity-stagnation
     predicate: covered_traits < 50 of 105
-    window: two consecutive parity audits after wave-4 activation
+    window: "two consecutive parity audits; not evaluated before the L4 milestone (Phase B) is validated — no reading before L4"
     source: docs/parity/audits/PARITY-radar-inoreader.md
   - id: sovereignty-breach
     predicate: any of the 15 CONFLIT traits (full-text archive, cross-tenant analytics) enters the covered set
@@ -65,27 +67,81 @@ benchmark:
   url: https://www.inoreader.com
 scope_stability: stable
 phases:
-  - id: activation
-    title: Activation multi-repo (γ 3.5)
+  - id: native-ingestion-v1
+    title: Ingestion native, v1 personnel
     exit_criteria:
-      - id: graft-green
-        text: Contenu greffé depuis le hub avec son histoire, workspace autonome vert en CI réelle, description dégelée.
-        weight: 2
-        status: accepted
-        evidence:
-          date: "2026-07-30"
-          reference: "gate-acceptance-log 2026-07-30 (ligne 3.5), PR hub #286"
-  - id: product-surface
-    title: Surface produit complète
-    exit_criteria:
-      - id: product-surface-done
-        text: L'application couvre imports OPML/RSS/Atom/JSON Feed et exports curés de bout en bout, parcours e2e verts.
-        weight: 4
+      - id: l1-parser-rss-atom
+        text: Le parseur RSS 2.0 et Atom 1.0 (~12 sources) traite le corpus contracts/fixtures/radar-engine-v2 (golden et adversarial) et refuse mécaniquement les vecteurs hostiles (DTD, entités, dépassement de limites).
+        weight: 3
         status: pending
-  - id: exposure
-    title: Exposition vérifiable
+      - id: l2-network-fetch
+        text: Le fetch réseau réel est branché derrière security/destination-policy.ts ; l'intégration réseau est prouvée et le refus SSRF est démontré sur une cible interdite réelle.
+        weight: 3
+        status: pending
+  - id: demonstrated-curation
+    title: Curation démontrée
     exit_criteria:
-      - id: promotion-met
-        text: Les conditions de promotion vers usable-verifiable déclarées par cette fiche (promotion_criteria) sont réunies et vérifiées.
+      - id: l3-e2e-cycle
+        text: Un cycle réel de bout en bout (ingestion → curation → export) produit un export dont chaque item retenu est justifié par une règle lisible et relu par une personne.
+        weight: 3
+        status: pending
+      - id: l4-hypothesis-validated
+        text: L'hypothèse de gouvernance radar-deterministic-curation-precision est exécutée sur quatre cycles réels — au moins 70 % des items retenus jugés pertinents, aucun item pertinent manqué dans l'échantillon de contrôle relu à la main.
+        weight: 5
+        status: pending
+  - id: multi-tenant-surface
+    title: Surface multi-tenant
+    note: "Remplace l'ancien critère monolithique « product-surface » : un critère par commande du protocole de domaine (docs/apps/radar.md)."
+    exit_criteria:
+      - id: c-preview-subscription
+        text: PreviewSubscription est implémenté — aperçu de découverte borné sur l'URL soumise, tenant-scopé (RLS) et autorisé par Biscuit, parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-add-subscription
+        text: AddSubscription est implémenté — confirmation d'une source canonique unique et de sa planification, tenant-scopé (RLS) et autorisé par Biscuit, parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-update-subscription
+        text: UpdateSubscription est implémenté — mutation d'une souscription avec contrôle de revision (refus radar.revision_stale prouvé), tenant-scopé (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-remove-subscription
+        text: RemoveSubscription est implémenté — suppression d'une source et des données retenues associées, tenant-scopé (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-create-rule-set
+        text: CreateRuleSet est implémenté — création d'une version immuable de règles, tenant-scopée (RLS) et autorisée par Biscuit, parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-activate-rule-set
+        text: ActivateRuleSet est implémenté — activation d'une version de règles sans mutation de l'historique de décisions, tenant-scopée (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-schedule-fetch
+        text: ScheduleFetch est implémenté — bail (lease) de fetch idempotent par tenant/source/fenêtre planifiée, tenant-scopé (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-record-fetch-result
+        text: RecordFetchResult est implémenté — enregistrement du résultat de fetch (quarantaine, normalisation, refus bornés) sans corps brut hostile conservé, tenant-scopé (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-replay-rule-set
+        text: ReplayRuleSet est implémenté — rejeu déterministe contre une autre version de règles, sans mutation de l'historique, tenant-scopé (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-export-curation
+        text: ExportCuration est implémenté — export des souscriptions/règles/décisions curées avec provenance, tenant-scopé (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+      - id: c-delete-curation-data
+        text: DeleteCurationData est implémenté — suppression d'une source et des données retenues, conforme à la politique de rétention (ADR-0002 section 3), tenant-scopé (RLS), parcours e2e vert.
+        weight: 1
+        status: pending
+  - id: parity-t1
+    title: Parité T1
+    note: L'horizon T2 (parité étendue, 70 traits sur 105) reste un jalon ultérieur non gaté par cette fiche — voir promotion_criteria (to proven, 90/105).
+    exit_criteria:
+      - id: d-parity-shipped-code
+        text: L'audit PARITY-radar-inoreader (docs/parity/audits/PARITY-radar-inoreader.md) est ré-exécuté contre le code livré de la Phase C — et non contre la spec — et confirme les 32 traits Parité-cœur couverts par le code déployé.
         weight: 4
         status: pending
